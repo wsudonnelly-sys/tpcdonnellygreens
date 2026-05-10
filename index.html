@@ -1,0 +1,2821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Donnelly Greens">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#1a5c2e">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mini Golf Scorecard</title>
+<style>
+:root {
+  --bg: #0f1f14;
+  --surface: rgba(30,60,35,0.7);
+  --surface-2: rgba(20,45,25,0.8);
+  --surface-3: rgba(50,80,55,0.6);
+  --primary: #4ade80;
+  --primary-dim: #22c55e;
+  --accent: #fbbf24;
+  --accent-dim: #d97706;
+  --text: #f1f5f0;
+  --text-secondary: #a7c4a0;
+  --text-muted: #6b8a65;
+  --border: rgba(74,130,74,0.3);
+  --border-light: rgba(100,160,100,0.2);
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --gold: #fbbf24;
+  --silver: #d1d5db;
+  --bronze: #d97706;
+  --scorecard-bg: #fafaf5;
+  --scorecard-text: #1f2937;
+  --scorecard-line: #e5e2d8;
+  --scorecard-header: #1a4025;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --font: 'Georgia', 'Times New Roman', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font-sans); background: var(--bg); color: var(--text); min-height: 100vh; position: relative; overflow-x: hidden; }
+
+/* Background scenery */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: 
+    radial-gradient(ellipse at top, #1a3520 0%, #0f1f14 50%),
+    linear-gradient(180deg, #0a1a0f 0%, #0f1f14 100%);
+  z-index: -2;
+}
+body::after {
+  content: '';
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 200px;
+  background: linear-gradient(to top, rgba(0,0,0,0.3), transparent);
+  z-index: -1;
+}
+
+
+/* iPad / Touch Optimization */
+/* Touch-friendly checkboxes and selectors */
+input[type="checkbox"], input[type="radio"] { 
+  width: 22px; height: 22px; min-width: 22px; 
+  accent-color: var(--primary); 
+}
+label { padding: 8px 0; display: inline-flex; align-items: center; gap: 8px; }
+.card { -webkit-tap-highlight-color: transparent; }
+select { min-height: 44px; padding: 10px 12px; touch-action: manipulation; }
+
+* { -webkit-tap-highlight-color: rgba(74, 222, 128, 0.2); touch-action: manipulation; }
+button, .btn, .nav-btn, .player-row, .course-row { min-height: 44px; }
+input, select { font-size: 16px !important; } /* prevents iOS zoom on focus */
+.scorecard-cell { min-width: 44px; min-height: 44px; }
+@media (pointer: coarse) {
+  .score-btn, .score-popup button { min-width: 52px; min-height: 52px; font-size: 20px; }
+  .nav-btn { padding: 12px 10px; font-size: 13px; }
+}
+
+/* Tree silhouettes */
+.trees {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.08;
+}
+.tree { position: absolute; bottom: 0; }
+.tree svg { display: block; }
+
+/* Header */
+.app-header {
+  text-align: center;
+  padding: 28px 16px 14px;
+  position: relative;
+}
+.app-header h1 {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+.app-header h1 span { color: var(--primary); }
+.app-header .subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.header-decor {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Navigation */
+.nav {
+  display: flex;
+  gap: 6px;
+  padding: 12px 16px;
+  background: rgba(15,31,20,0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(74,222,128,0.08);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.nav-btn {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-family: var(--font-sans);
+}
+.nav-btn:hover { background: rgba(74,222,128,0.08); color: var(--text); }
+.nav-btn.active {
+  background: rgba(74,222,128,0.15);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+/* Container */
+.container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* Cards */
+.card {
+  background: rgba(25,55,30,0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(74,222,128,0.1);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.card-title {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary);
+  letter-spacing: -0.3px;
+}
+.card-subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; }
+
+/* Scorecard style card (paper look) */
+.scorecard-card {
+  background: var(--scorecard-bg);
+  border: 1px solid var(--scorecard-line);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  color: var(--scorecard-text);
+  position: relative;
+}
+.scorecard-card .sc-header {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--scorecard-header);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--scorecard-line);
+  position: relative;
+  z-index: 1;
+}
+
+/* Buttons */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+}
+.btn-primary {
+  background: var(--primary);
+  color: #0f1f14;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(74,222,128,0.25);
+}
+.btn-primary:hover { background: var(--primary-dim); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(74,222,128,0.3); }
+.btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--primary); }
+.btn-gold { background: var(--gold); color: #2a2a1a; font-weight: 700; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* Inputs */
+.input {
+  background: rgba(15,31,20,0.6);
+  border: 1.5px solid rgba(74,222,128,0.12);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 14px;
+  width: 100%;
+  font-family: var(--font-sans);
+  transition: all 0.2s;
+}
+.input:focus { outline: none; border-color: rgba(74,222,128,0.5); box-shadow: 0 0 0 3px rgba(74,222,128,0.1); }
+select.input { cursor: pointer; }
+.label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+
+/* Tee dots */
+.tee-dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; border: 2px solid rgba(255,255,255,0.4); vertical-align: middle; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.tee-Red { background: #e74c3c; }
+.tee-Blue { background: #3498db; }
+.tee-Pink { background: #ff69b4; }
+.tee-Yellow { background: #FFD700; }
+.tee-Purple { background: #9b59b6; }
+.tee-Orange { background: #e67e22; }
+.tee-White { background: #ecf0f1; border-color: #aaa; }
+.tee-Black { background: #111111; border-color: #444; }
+
+/* Hole grid */
+.hole-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px; margin: 16px 0; }
+.hole-chip {
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(20,45,25,0.5);
+  border: 1.5px solid rgba(74,222,128,0.1);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.hole-chip::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 50%;
+  width: 20px; height: 20px;
+  background: rgba(124,252,0,0.1);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  transition: all 0.2s;
+}
+.hole-chip:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+.hole-chip:hover::after { width: 40px; height: 40px; background: rgba(124,252,0,0.15); }
+.hole-chip.selected { border-color: var(--primary); background: rgba(74,222,128,0.12); }
+.hole-chip.selected::after { width: 60px; height: 60px; background: rgba(124,252,0,0.2); }
+.hole-chip .hname { font-weight: 700; font-size: 14px; margin-top: 4px; position: relative; z-index: 1; }
+.hole-chip .hinfo { color: var(--text-muted); font-size: 10px; margin-top: 2px; position: relative; z-index: 1; }
+
+/* Difficulty buttons */
+.diff-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.diff-btn {
+  padding: 8px 16px;
+  border: 1.5px solid rgba(74,222,128,0.15);
+  border-radius: 20px;
+  background: rgba(20,45,25,0.4);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  font-family: var(--font-sans);
+}
+.diff-btn:hover { border-color: rgba(74,222,128,0.4); color: var(--text); background: rgba(30,60,35,0.5); }
+.diff-btn.active { border-color: var(--primary); background: rgba(74,222,128,0.15); color: var(--primary); font-weight: 600; }
+
+/* Course summary */
+.course-summary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  margin: 12px 0;
+  border: 1px solid var(--border);
+}
+.cs-item { text-align: center; }
+.cs-item .val { font-size: 22px; font-weight: 700; font-family: var(--font-mono); color: var(--primary); }
+.cs-item .lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Scorecard table */
+.sc-table-wrap { overflow-x: auto; position: relative; z-index: 1; }
+.sc-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--font-mono); }
+.sc-table th {
+  padding: 8px 4px;
+  text-align: center;
+  background: var(--scorecard-header);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.sc-table th:first-child { text-align: left; padding-left: 8px; border-radius: 4px 0 0 0; }
+.sc-table th:last-child { border-radius: 0 4px 0 0; }
+.sc-table td {
+  padding: 12px 6px;
+  text-align: center;
+  border-bottom: 1px solid var(--scorecard-line);
+  min-width: 46px;
+  min-height: 46px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: rgba(74,222,128,0.2);
+  touch-action: manipulation;
+}
+.sc-table td:active { background: rgba(124,252,0,0.15); }
+.sc-table td:hover, .sc-table td:active { background: rgba(124,252,0,0.12); }
+.sc-table td:first-child { cursor: default; }
+.sc-table td:first-child:hover { background: transparent; }
+.sc-table td:first-child { text-align: left; padding-left: 8px; font-family: var(--font-sans); font-weight: 600; }
+.sc-table tr.par-row { background: rgba(45,90,45,0.1); }
+.sc-table tr.par-row td { font-weight: 600; color: var(--scorecard-header); font-size: 11px; }
+
+/* Score input buttons */
+.score-cell { position: relative; }
+.score-val {
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  font-weight: 700; font-size: 14px;
+  cursor: pointer;
+  border: 2px solid var(--scorecard-line);
+  background: white;
+  color: var(--scorecard-text);
+  transition: all 0.15s;
+  font-family: var(--font-mono);
+}
+.score-val:hover { transform: scale(1.1); }
+.score-val.sc-ace { background: var(--gold); border-color: var(--gold); color: #2a1a00; box-shadow: 0 0 8px rgba(255,215,0,0.6); }
+.score-val.sc-eagle { background: #fff3cd; border-color: var(--gold); color: #856404; }
+.score-val.sc-birdie { background: #d4edda; border-color: #28a745; color: #155724; }
+.score-val.sc-par { background: white; border-color: var(--scorecard-line); }
+.score-val.sc-bogey { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+
+/* Golf scorecard circle/square notation */
+.sc-circle { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; border: 2px solid #155724; color: #155724; font-weight: 700; }
+.sc-dblcircle { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; border: 2px solid #d4a017; color: #d4a017; font-weight: 700; box-shadow: 0 0 0 3px #fff, 0 0 0 5px #d4a017; }
+
+.sc-hio { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; border: 2px solid #d4a017; color: #d4a017; font-weight: 700; box-shadow: 0 0 0 3px #fff, 0 0 0 5px #d4a017; }
+.sc-square { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border: 2px solid #721c24; color: #721c24; font-weight: 700; }
+.sc-dblsquare { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border: 2px solid #dc3545; color: #dc3545; font-weight: 700; box-shadow: 0 0 0 3px #fff, 0 0 0 5px #dc3545; }
+.score-val.sc-dbl { background: #dc3545; border-color: #dc3545; color: white; }
+.score-val.empty { background: #f8f8f0; border-style: dashed; color: #ccc; }
+
+/* Score popup */
+.score-popup {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border-radius: 20px;
+  padding: 4px;
+  display: flex;
+  gap: 2px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 50;
+  border: 1px solid var(--scorecard-line);
+}
+.score-popup button {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--scorecard-text);
+  transition: all 0.1s;
+}
+.score-popup button:hover { background: var(--primary); color: #1a3a1a; border-color: var(--primary); }
+
+/* Player rows */
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(20,45,25,0.5);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border: 1px solid rgba(74,222,128,0.08);
+  transition: all 0.15s;
+}
+.player-row:hover { background: rgba(30,60,35,0.6); border-color: rgba(74,222,128,0.15); }
+.player-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px;
+  background: linear-gradient(135deg, var(--surface-3), var(--surface));
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+
+/* Stats */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 16px 0; }
+.stat-card {
+  background: rgba(20,45,25,0.4);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+  border: 1px solid rgba(74,222,128,0.08);
+}
+.stat-value { font-size: 24px; font-weight: 700; font-family: var(--font-mono); color: var(--primary); }
+.stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.badge-easy { background: rgba(124,252,0,0.2); color: var(--primary); }
+.badge-med { background: rgba(255,215,0,0.2); color: var(--gold); }
+.badge-hard { background: rgba(255,107,107,0.2); color: var(--error); }
+
+/* Toggle */
+.toggle-wrap { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+.toggle { width: 44px; height: 24px; border-radius: 12px; background: rgba(74,222,128,0.15); cursor: pointer; position: relative; transition: all 0.25s; }
+.toggle.on { background: var(--primary); }
+.toggle::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: white; top: 3px; left: 3px; transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+.toggle.on::after { transform: translateX(20px); }
+
+/* Achievements */
+.achievement {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border-left: 3px solid var(--gold);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+}
+.achievement .ach-icon { font-size: 28px; }
+.achievement .ach-title { font-weight: 600; font-size: 14px; color: var(--text); }
+.achievement .ach-desc { font-size: 12px; color: var(--text-muted); }
+.achievement.locked { opacity: 0.35; border-left-color: var(--border); }
+
+/* Leaderboard */
+.leaderboard-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.leaderboard-row:nth-child(1) { background: rgba(255,215,0,0.1); border-color: rgba(255,215,0,0.4); }
+.leaderboard-row:nth-child(2) { background: rgba(192,192,192,0.08); border-color: rgba(192,192,192,0.3); }
+.leaderboard-row:nth-child(3) { background: rgba(205,127,50,0.08); border-color: rgba(205,127,50,0.3); }
+.lb-rank { font-size: 18px; font-weight: 700; width: 30px; text-align: center; }
+.lb-name { flex: 1; font-weight: 500; }
+.lb-score { font-family: var(--font-mono); font-weight: 700; color: var(--primary); }
+
+/* Streak */
+.streak-bar { display: flex; gap: 4px; margin: 8px 0; }
+.streak-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; font-family: var(--font-mono);
+}
+.streak-dot.fire { background: rgba(124,252,0,0.2); color: var(--primary); border: 1px solid var(--primary); }
+.streak-dot.cold { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* History */
+.history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.history-table th { text-align: left; color: var(--text-muted); font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
+.history-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.history-table tr:hover td { background: rgba(124,252,0,0.05); }
+
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+
+/* Golf icons inline */
+.golf-icon { display: inline-block; margin: 0 2px; }
+
+/* Utilities */
+.flex { display: flex; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.mb-12 { margin-bottom: 12px; }
+.mb-16 { margin-bottom: 16px; }
+.mt-12 { margin-top: 12px; }
+
+/* Flag icon */
+.flag-icon {
+  display: inline-block;
+  width: 12px; height: 16px;
+  position: relative;
+}
+.flag-icon::before {
+  content: '';
+  position: absolute;
+  left: 1px; top: 0;
+  width: 1px; height: 100%;
+  background: var(--text-muted);
+}
+.flag-icon::after {
+  content: '';
+  position: absolute;
+  left: 2px; top: 0;
+  width: 8px; height: 6px;
+  background: var(--error);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+@media (max-width: 600px) {
+  .hole-grid { grid-template-columns: repeat(4, 1fr); }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .nav-btn { padding: 6px 10px; font-size: 12px; }
+  .app-header h1 { font-size: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Tree silhouettes background -->
+<div class="trees" id="trees-bg"></div>
+
+<div class="app-header">
+<h1>&#9971; TPC - Donnelly Greens</h1>
+  <div class="subtitle">Mini Golf Scorecard</div>
+  <div class="header-decor">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="18" r="3"/>
+      <path d="M12 2v13"/>
+      <path d="M12 2l6 3-6 3"/>
+    </svg>
+    <span style="font-size:11px; letter-spacing:3px;">EST. 2026</span>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M4 20 Q8 8 12 12 Q16 16 20 4"/>
+      <circle cx="20" cy="4" r="2"/>
+    </svg>
+  </div>
+</div>
+
+<nav class="nav" id="main-nav"></nav>
+
+<div class="container">
+  <div id="page-course" class="page active"></div>
+  <div id="page-play" class="page"></div>
+  <div id="page-players" class="page"></div>
+  <div id="page-history" class="page"></div>
+  <div id="page-achievements" class="page"></div>
+</div>
+
+<script>
+window.onerror = function(msg, src, line) { return true; };
+// ===================== CONFIG =====================
+var TEE_COLORS = ['Red', 'Blue', 'Pink', 'Yellow', 'Purple', 'Orange', 'White', 'Black'];
+var FLAG_NUMBERS = [1, 2, 3, 4];
+var ALL_HOLES = [];
+var COLOR_DIFF = { Red: 1, Blue: 2, Pink: 2, Yellow: 3, Purple: 3, Orange: 4, White: 4, Black: 5 };
+
+var TEE_CSS_COLORS = { Red: '#e74c3c', Blue: '#3498db', Pink: '#ff69b4', Yellow: '#FFD700', Purple: '#9b59b6', Orange: '#e67e22', White: '#ecf0f1', Black: '#111111' };
+function getTeeCSSColor(color) { return TEE_CSS_COLORS[color] || '#fff'; }
+
+var REAL_PARS = [1.5,1,1,2, 1,1,1.5,2, 1,1.5,1.5,2.5, 1.5,1.5,1.5,1.5, 2,2,1.5,1, 2,2,1,1, 1,1,1.5,2, 2.5,2,1.5,1];
+(function initHoles() {
+  var id = 0;
+  for (var ci = 0; ci < TEE_COLORS.length; ci++) {
+    for (var fi = 0; fi < FLAG_NUMBERS.length; fi++) {
+      var color = TEE_COLORS[ci];
+      var flag = FLAG_NUMBERS[fi];
+      var par = REAL_PARS[id];
+      var diff = Math.round(par * 2);
+      diff = Math.max(1, Math.min(5, diff));
+      var abbr = color === 'Yellow' ? 'G' : color[0]; ALL_HOLES.push({ id: id++, color: color, flag: flag, name: abbr + flag, fullName: (color === 'Yellow' ? 'Gold' : color) + ' ' + flag, difficulty: diff, par: par, rank: 0 });
+    }
+  }
+  var sorted = ALL_HOLES.slice().sort(function(a, b) { return b.difficulty - a.difficulty || b.flag - a.flag; });
+  for (var i = 0; i < sorted.length; i++) ALL_HOLES[sorted[i].id].rank = i + 1;
+})();
+
+// ===================== STATE =====================
+var state = {
+  players: [{"id": 1, "name": "Matt", "lastName": "Donnelly", "handicap": null}, {"id": 2, "name": "Ace", "lastName": "Donnelly", "handicap": null}, {"id": 3, "name": "Olivia", "lastName": "Donnelly", "handicap": null}, {"id": 4, "name": "Carly", "lastName": "Donnelly", "handicap": null}, {"id": 5, "name": "Jim", "lastName": "Ellington", "handicap": null}, {"id": 6, "name": "Sandy", "lastName": "Ellington", "handicap": null}, {"id": 7, "name": "Jay", "lastName": "Ellington", "handicap": null}, {"id": 8, "name": "Lovely", "lastName": "Ellington", "handicap": null}, {"id": 9, "name": "TJ", "lastName": "Ellington", "handicap": null}, {"id": 10, "name": "JB", "lastName": "Ellington", "handicap": null}],
+  courses: [{"id": 1778431603411, "name": "The OG", "holeIds": [14,3,17,24,10,22,15,29,7,13,27,18,0,12,4,8,11,28], "totalPar": 29.5, "avgDifficulty": 3.2777777777777777}],
+  rounds: [{"id": 1770000000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-01-10T16:00:00.000Z", "isTest": true, "results": [{"playerId": 7, "playerName": "Jay", "scores": [1, 2, 3, 1, 2, 2, 2, 4, 2, 2, 3, 1, 3, 2, 1, 2, 2, 3], "total": 38}, {"playerId": 10, "playerName": "JB", "scores": [3, 2, 4, 2, 3, 1, 2, 2, 1, 1, 4, 2, 2, 3, 2, 3, 3, 2], "total": 42}, {"playerId": 4, "playerName": "Carly", "scores": [3, 2, 3, 2, 4, 3, 2, 1, 1, 2, 3, 1, 2, 1, 1, 1, 2, 3], "total": 37}, {"playerId": 5, "playerName": "Jim", "scores": [1, 3, 1, 1, 1, 1, 3, 2, 3, 3, 1, 3, 2, 2, 2, 1, 2, 2], "total": 34}]}, {"id": 1770864000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-01-15T16:00:00.000Z", "isTest": true, "results": [{"playerId": 3, "playerName": "Olivia", "scores": [3, 3, 2, 1, 1, 1, 3, 2, 3, 2, 1, 3, 2, 2, 1, 2, 3, 4], "total": 39}, {"playerId": 10, "playerName": "JB", "scores": [2, 2, 1, 1, 3, 2, 1, 3, 2, 2, 1, 2, 2, 3, 2, 2, 3, 3], "total": 37}, {"playerId": 7, "playerName": "Jay", "scores": [4, 3, 2, 3, 1, 1, 2, 2, 2, 1, 3, 2, 1, 4, 2, 1, 3, 3], "total": 40}, {"playerId": 2, "playerName": "Ace", "scores": [3, 3, 3, 1, 2, 1, 1, 2, 2, 3, 3, 2, 3, 1, 1, 2, 3, 3], "total": 39}]}, {"id": 1771728000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-01-20T16:00:00.000Z", "isTest": true, "results": [{"playerId": 6, "playerName": "Sandy", "scores": [2, 2, 2, 3, 4, 3, 2, 3, 4, 1, 3, 2, 2, 2, 2, 2, 3, 2], "total": 44}, {"playerId": 7, "playerName": "Jay", "scores": [2, 4, 3, 1, 1, 1, 1, 4, 3, 2, 3, 1, 1, 3, 1, 2, 2, 2], "total": 37}, {"playerId": 1, "playerName": "Matt", "scores": [3, 4, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 1, 3, 3, 2, 3, 4], "total": 45}, {"playerId": 8, "playerName": "Lovely", "scores": [2, 4, 2, 3, 2, 1, 3, 1, 3, 1, 3, 1, 1, 2, 1, 1, 4, 3], "total": 38}]}, {"id": 1772592000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-01-25T16:00:00.000Z", "isTest": true, "results": [{"playerId": 1, "playerName": "Matt", "scores": [3, 2, 2, 2, 2, 2, 1, 2, 2, 2, 3, 1, 2, 2, 2, 2, 2, 3], "total": 37}, {"playerId": 6, "playerName": "Sandy", "scores": [2, 3, 2, 1, 3, 2, 1, 3, 3, 2, 3, 2, 2, 1, 1, 2, 2, 2], "total": 37}, {"playerId": 4, "playerName": "Carly", "scores": [1, 2, 4, 2, 1, 1, 2, 1, 3, 1, 2, 3, 3, 1, 2, 2, 4, 4], "total": 39}, {"playerId": 5, "playerName": "Jim", "scores": [2, 2, 1, 1, 2, 1, 3, 3, 3, 1, 1, 2, 1, 2, 2, 1, 3, 2], "total": 33}]}, {"id": 1773456000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-02-10T16:00:00.000Z", "isTest": true, "results": [{"playerId": 1, "playerName": "Matt", "scores": [1, 2, 3, 2, 3, 2, 2, 3, 3, 1, 2, 1, 1, 1, 2, 1, 1, 5], "total": 36}, {"playerId": 7, "playerName": "Jay", "scores": [3, 1, 4, 2, 1, 2, 1, 3, 1, 3, 1, 2, 4, 2, 1, 1, 3, 3], "total": 38}, {"playerId": 5, "playerName": "Jim", "scores": [2, 2, 2, 2, 2, 2, 1, 3, 4, 1, 2, 3, 1, 2, 1, 2, 4, 4], "total": 40}, {"playerId": 8, "playerName": "Lovely", "scores": [3, 1, 2, 1, 2, 1, 2, 2, 2, 2, 2, 1, 2, 3, 1, 1, 4, 3], "total": 35}]}, {"id": 1774320000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-02-15T16:00:00.000Z", "isTest": true, "results": [{"playerId": 3, "playerName": "Olivia", "scores": [2, 2, 3, 1, 2, 1, 2, 2, 2, 3, 1, 1, 2, 3, 1, 1, 2, 3], "total": 34}, {"playerId": 5, "playerName": "Jim", "scores": [2, 3, 1, 1, 1, 2, 3, 1, 1, 1, 2, 2, 4, 2, 1, 2, 4, 4], "total": 37}, {"playerId": 9, "playerName": "TJ", "scores": [1, 3, 3, 1, 1, 3, 1, 2, 1, 3, 3, 1, 2, 2, 1, 2, 1, 3], "total": 34}, {"playerId": 1, "playerName": "Matt", "scores": [2, 2, 3, 3, 2, 1, 3, 2, 4, 2, 2, 3, 1, 1, 2, 1, 4, 3], "total": 41}]}, {"id": 1775184000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-02-20T16:00:00.000Z", "isTest": true, "results": [{"playerId": 8, "playerName": "Lovely", "scores": [1, 3, 3, 2, 1, 2, 2, 3, 1, 3, 2, 2, 4, 1, 1, 3, 2, 4], "total": 40}, {"playerId": 6, "playerName": "Sandy", "scores": [3, 3, 4, 2, 1, 2, 3, 2, 1, 1, 2, 1, 4, 1, 1, 1, 4, 4], "total": 40}, {"playerId": 2, "playerName": "Ace", "scores": [1, 2, 3, 2, 1, 3, 3, 2, 2, 2, 3, 2, 1, 2, 1, 2, 3, 3], "total": 38}, {"playerId": 9, "playerName": "TJ", "scores": [1, 3, 3, 2, 2, 2, 2, 3, 1, 1, 2, 1, 1, 3, 2, 1, 2, 4], "total": 36}]}, {"id": 1776048000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-02-25T16:00:00.000Z", "isTest": true, "results": [{"playerId": 5, "playerName": "Jim", "scores": [2, 2, 4, 1, 2, 2, 2, 4, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2], "total": 38}, {"playerId": 3, "playerName": "Olivia", "scores": [3, 2, 2, 1, 1, 1, 1, 2, 3, 2, 1, 2, 1, 2, 1, 1, 3, 2], "total": 31}, {"playerId": 4, "playerName": "Carly", "scores": [2, 3, 3, 2, 1, 2, 1, 4, 2, 2, 1, 2, 2, 2, 2, 1, 3, 4], "total": 39}, {"playerId": 1, "playerName": "Matt", "scores": [2, 1, 2, 2, 1, 1, 1, 1, 2, 2, 3, 2, 4, 4, 1, 2, 2, 4], "total": 37}]}, {"id": 1776912000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-03-10T16:00:00.000Z", "isTest": true, "results": [{"playerId": 3, "playerName": "Olivia", "scores": [2, 2, 2, 2, 1, 1, 2, 1, 4, 1, 2, 2, 1, 3, 1, 2, 1, 3], "total": 33}, {"playerId": 5, "playerName": "Jim", "scores": [3, 4, 3, 1, 2, 3, 3, 2, 1, 1, 2, 2, 1, 1, 2, 1, 3, 1], "total": 36}, {"playerId": 1, "playerName": "Matt", "scores": [2, 3, 2, 2, 1, 1, 3, 3, 2, 3, 1, 3, 3, 2, 2, 2, 3, 4], "total": 42}, {"playerId": 9, "playerName": "TJ", "scores": [3, 2, 1, 2, 2, 1, 3, 3, 3, 2, 3, 2, 4, 1, 2, 1, 1, 3], "total": 39}]}, {"id": 1777776000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-03-15T16:00:00.000Z", "isTest": true, "results": [{"playerId": 5, "playerName": "Jim", "scores": [2, 3, 1, 1, 1, 2, 4, 3, 2, 3, 2, 2, 2, 1, 1, 2, 1, 3], "total": 36}, {"playerId": 10, "playerName": "JB", "scores": [2, 3, 2, 1, 2, 1, 1, 3, 2, 2, 3, 3, 2, 2, 2, 1, 3, 3], "total": 38}, {"playerId": 8, "playerName": "Lovely", "scores": [2, 4, 3, 1, 4, 2, 3, 2, 4, 2, 4, 1, 1, 1, 1, 2, 3, 3], "total": 43}, {"playerId": 1, "playerName": "Matt", "scores": [1, 2, 1, 1, 2, 2, 2, 3, 2, 2, 2, 3, 2, 2, 2, 3, 5, 3], "total": 40}]}, {"id": 1778640000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-03-20T16:00:00.000Z", "isTest": true, "results": [{"playerId": 8, "playerName": "Lovely", "scores": [2, 2, 3, 2, 2, 3, 3, 2, 1, 2, 2, 3, 2, 1, 1, 2, 2, 4], "total": 39}, {"playerId": 9, "playerName": "TJ", "scores": [2, 2, 3, 2, 1, 2, 1, 4, 3, 1, 2, 4, 4, 3, 1, 1, 3, 2], "total": 41}, {"playerId": 10, "playerName": "JB", "scores": [2, 1, 2, 1, 3, 1, 3, 2, 1, 2, 2, 4, 3, 3, 1, 2, 4, 2], "total": 39}, {"playerId": 5, "playerName": "Jim", "scores": [3, 2, 2, 2, 2, 1, 2, 3, 1, 1, 2, 1, 1, 3, 3, 2, 4, 3], "total": 38}]}, {"id": 1779504000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-03-25T16:00:00.000Z", "isTest": true, "results": [{"playerId": 1, "playerName": "Matt", "scores": [2, 2, 2, 1, 2, 3, 3, 2, 3, 1, 2, 3, 2, 1, 1, 2, 3, 2], "total": 37}, {"playerId": 3, "playerName": "Olivia", "scores": [2, 2, 2, 1, 3, 2, 3, 2, 3, 1, 2, 1, 1, 2, 1, 2, 3, 4], "total": 37}, {"playerId": 6, "playerName": "Sandy", "scores": [1, 1, 1, 3, 2, 1, 1, 2, 2, 2, 2, 1, 2, 1, 2, 2, 2, 3], "total": 31}, {"playerId": 9, "playerName": "TJ", "scores": [2, 2, 2, 1, 2, 3, 3, 2, 2, 2, 2, 4, 3, 2, 1, 2, 3, 3], "total": 41}]}, {"id": 1780368000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-04-10T16:00:00.000Z", "isTest": true, "results": [{"playerId": 6, "playerName": "Sandy", "scores": [2, 3, 2, 3, 1, 2, 1, 1, 1, 1, 1, 1, 2, 3, 2, 2, 4, 2], "total": 34}, {"playerId": 8, "playerName": "Lovely", "scores": [2, 1, 2, 1, 2, 3, 2, 3, 3, 2, 1, 1, 1, 2, 1, 2, 3, 2], "total": 34}, {"playerId": 4, "playerName": "Carly", "scores": [3, 2, 2, 1, 2, 1, 3, 2, 2, 2, 1, 3, 3, 1, 1, 2, 4, 3], "total": 38}, {"playerId": 1, "playerName": "Matt", "scores": [2, 2, 3, 2, 2, 3, 2, 1, 3, 4, 2, 3, 3, 3, 2, 2, 2, 2], "total": 43}]}, {"id": 1781232000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-04-15T16:00:00.000Z", "isTest": true, "results": [{"playerId": 2, "playerName": "Ace", "scores": [2, 2, 2, 2, 3, 1, 1, 2, 4, 1, 3, 3, 2, 2, 3, 2, 3, 3], "total": 41}, {"playerId": 3, "playerName": "Olivia", "scores": [2, 2, 2, 1, 2, 1, 2, 3, 3, 2, 3, 2, 2, 2, 2, 1, 4, 2], "total": 38}, {"playerId": 4, "playerName": "Carly", "scores": [1, 2, 1, 1, 3, 1, 1, 2, 3, 1, 3, 3, 2, 2, 1, 2, 4, 2], "total": 35}, {"playerId": 7, "playerName": "Jay", "scores": [1, 3, 2, 2, 3, 2, 3, 3, 4, 2, 2, 3, 2, 1, 1, 2, 1, 5], "total": 42}]}, {"id": 1782096000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-04-20T16:00:00.000Z", "isTest": true, "results": [{"playerId": 3, "playerName": "Olivia", "scores": [1, 2, 2, 1, 1, 2, 2, 2, 3, 1, 2, 1, 2, 2, 2, 1, 3, 4], "total": 34}, {"playerId": 4, "playerName": "Carly", "scores": [3, 1, 1, 1, 2, 1, 2, 1, 2, 2, 2, 3, 3, 2, 1, 2, 2, 2], "total": 33}, {"playerId": 5, "playerName": "Jim", "scores": [1, 2, 2, 1, 3, 2, 2, 3, 1, 2, 3, 1, 2, 2, 1, 1, 2, 3], "total": 34}, {"playerId": 8, "playerName": "Lovely", "scores": [2, 2, 2, 1, 2, 1, 1, 2, 2, 3, 3, 2, 1, 3, 2, 1, 2, 3], "total": 35}]}, {"id": 1782960000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-04-25T16:00:00.000Z", "isTest": true, "results": [{"playerId": 3, "playerName": "Olivia", "scores": [2, 2, 1, 1, 2, 2, 2, 3, 3, 3, 1, 3, 4, 2, 2, 3, 2, 4], "total": 42}, {"playerId": 1, "playerName": "Matt", "scores": [2, 3, 3, 1, 1, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 1, 3, 2], "total": 33}, {"playerId": 6, "playerName": "Sandy", "scores": [2, 2, 1, 2, 2, 2, 3, 4, 4, 1, 2, 2, 3, 1, 3, 1, 2, 2], "total": 39}, {"playerId": 5, "playerName": "Jim", "scores": [2, 3, 2, 2, 3, 1, 2, 3, 3, 1, 2, 2, 1, 1, 2, 1, 3, 3], "total": 37}]}, {"id": 1783824000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-05-10T16:00:00.000Z", "isTest": true, "results": [{"playerId": 7, "playerName": "Jay", "scores": [1, 3, 2, 2, 2, 1, 1, 1, 2, 1, 3, 1, 1, 2, 1, 1, 2, 2], "total": 29}, {"playerId": 10, "playerName": "JB", "scores": [3, 2, 2, 1, 3, 1, 2, 3, 2, 1, 4, 1, 3, 1, 2, 3, 4, 3], "total": 41}, {"playerId": 6, "playerName": "Sandy", "scores": [2, 3, 3, 2, 3, 2, 1, 1, 3, 1, 2, 2, 2, 3, 2, 2, 3, 2], "total": 39}, {"playerId": 9, "playerName": "TJ", "scores": [2, 2, 3, 1, 1, 3, 1, 2, 3, 2, 3, 3, 2, 1, 2, 2, 3, 2], "total": 38}]}, {"id": 1784688000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-05-15T16:00:00.000Z", "isTest": true, "results": [{"playerId": 4, "playerName": "Carly", "scores": [1, 1, 3, 1, 4, 1, 2, 2, 2, 2, 3, 2, 3, 1, 2, 1, 1, 4], "total": 36}, {"playerId": 7, "playerName": "Jay", "scores": [1, 3, 1, 2, 2, 1, 2, 1, 3, 3, 2, 3, 2, 1, 1, 1, 3, 4], "total": 36}, {"playerId": 3, "playerName": "Olivia", "scores": [2, 3, 3, 2, 1, 1, 2, 1, 2, 2, 3, 3, 4, 2, 1, 2, 3, 2], "total": 39}, {"playerId": 2, "playerName": "Ace", "scores": [1, 2, 2, 1, 2, 2, 3, 3, 2, 2, 4, 2, 1, 1, 1, 2, 4, 2], "total": 37}]}, {"id": 1785552000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-05-20T16:00:00.000Z", "isTest": true, "results": [{"playerId": 2, "playerName": "Ace", "scores": [2, 3, 2, 1, 4, 2, 2, 1, 2, 3, 2, 1, 2, 1, 2, 3, 2, 5], "total": 40}, {"playerId": 1, "playerName": "Matt", "scores": [1, 2, 3, 3, 2, 1, 1, 2, 3, 2, 3, 3, 1, 1, 1, 2, 3, 3], "total": 37}, {"playerId": 6, "playerName": "Sandy", "scores": [2, 1, 3, 2, 3, 1, 3, 2, 2, 2, 2, 2, 2, 3, 2, 1, 3, 2], "total": 38}, {"playerId": 4, "playerName": "Carly", "scores": [1, 3, 2, 2, 1, 2, 2, 2, 1, 3, 1, 4, 2, 1, 1, 1, 2, 3], "total": 34}]}, {"id": 1786416000000, "courseId": 1778431603411, "courseName": "The OG", "coursePar": 29.5, "courseDifficulty": 3.2777777777777777, "date": "2026-05-25T16:00:00.000Z", "isTest": true, "results": [{"playerId": 9, "playerName": "TJ", "scores": [1, 2, 3, 2, 3, 1, 1, 4, 1, 1, 2, 1, 1, 3, 2, 2, 4, 4], "total": 38}, {"playerId": 3, "playerName": "Olivia", "scores": [1, 2, 1, 1, 2, 1, 2, 4, 2, 2, 2, 2, 1, 2, 2, 2, 4, 4], "total": 37}, {"playerId": 8, "playerName": "Lovely", "scores": [3, 2, 4, 1, 2, 1, 1, 3, 3, 1, 3, 3, 2, 1, 2, 1, 3, 1], "total": 37}, {"playerId": 7, "playerName": "Jay", "scores": [1, 2, 2, 2, 1, 1, 2, 3, 4, 2, 2, 1, 2, 2, 1, 2, 3, 3], "total": 36}]}],
+  currentRound: null,
+  selectedHoles: {},
+  holeOrder: [],
+  courseSize: 18,
+  targetDiff: null,
+  useHandicap: false,
+  activeScorePopup: null,
+  showPauseMenu: false,
+  gameMode: 'stroke',
+  selectedCourse: null,
+  pickAsYouGo: false
+};
+
+// ===================== PERSISTENCE =====================
+// Uses window.name (survives iframe reloads) + localStorage as fallback
+function saveState() {
+  try {
+    var toSave = JSON.stringify({ players: state.players, courses: state.courses, rounds: state.rounds, courseSize: state.courseSize });
+    window.name = 'mg_' + toSave;
+  } catch(e) {}
+  try { window.localStorage.setItem('minigolf_v2', JSON.stringify({ players: state.players, courses: state.courses, rounds: state.rounds, courseSize: state.courseSize })); } catch(e) {}
+}
+
+function loadState() {
+  var loaded = false;
+  // Try window.name first (survives reloads in same tab)
+  try {
+    if (window.name && window.name.indexOf('mg_') === 0) {
+      var saved = JSON.parse(window.name.substring(3));
+      if (saved.players && saved.players.length) { state.players = saved.players; loaded = true; }
+      if (saved.courses) state.courses = saved.courses;
+      if (saved.rounds) state.rounds = saved.rounds;
+      if (saved.courseSize) state.courseSize = saved.courseSize;
+    }
+  } catch(e) {}
+  // Fallback to localStorage
+  if (!loaded) {
+    try {
+      var raw = window.localStorage.getItem('minigolf_v2');
+      if (raw) {
+        var saved = JSON.parse(raw);
+        if (saved.players && saved.players.length) state.players = saved.players;
+        if (saved.courses) state.courses = saved.courses;
+        if (saved.rounds) state.rounds = saved.rounds;
+        if (saved.courseSize) state.courseSize = saved.courseSize;
+      }
+    } catch(e) {}
+  }
+}
+
+// ===================== TREE BACKGROUND =====================
+(function renderTrees() {
+  var container = document.getElementById('trees-bg');
+  var svg = '';
+  var trees = [
+    { x: '5%', h: 180, w: 60 },
+    { x: '15%', h: 220, w: 80 },
+    { x: '25%', h: 150, w: 50 },
+    { x: '70%', h: 200, w: 70 },
+    { x: '82%', h: 250, w: 90 },
+    { x: '92%', h: 170, w: 55 },
+    { x: '50%', h: 130, w: 45 }
+  ];
+  var html = '';
+  for (var i = 0; i < trees.length; i++) {
+    var t = trees[i];
+    html += '<div class="tree" style="left:' + t.x + '">';
+    html += '<svg width="' + t.w + '" height="' + t.h + '" viewBox="0 0 ' + t.w + ' ' + t.h + '">';
+    html += '<path d="M' + (t.w/2) + ' 0 L' + t.w + ' ' + (t.h*0.7) + ' L0 ' + (t.h*0.7) + ' Z" fill="#0a2a0a"/>';
+    html += '<rect x="' + (t.w/2-4) + '" y="' + (t.h*0.65) + '" width="8" height="' + (t.h*0.35) + '" fill="#1a1a0a"/>';
+    html += '</svg></div>';
+  }
+  container.innerHTML = html;
+})();
+
+// ===================== ACHIEVEMENTS =====================
+var ACHIEVEMENTS = [
+  { id: 'first_ace', icon: '&#127775;', title: 'Hole in One!', desc: 'Score your first hole in one', check: function(s) { return s.totalAces >= 1; } },
+  { id: 'ace_5', icon: '&#128293;', title: 'HIO Machine', desc: 'Score 5 hole in ones total', check: function(s) { return s.totalAces >= 5; } },
+  { id: 'under_par', icon: '&#127942;', title: 'Under Par', desc: 'Finish a round under par', check: function(s) { return s.bestDiff < 0; } },
+  { id: 'streak_3', icon: '&#128165;', title: 'Hot Putter', desc: '3 birdies or better in a row', check: function(s) { return s.bestStreak >= 3; } },
+  { id: 'streak_5', icon: '&#9889;', title: 'On Fire', desc: '5 birdies or better in a row', check: function(s) { return s.bestStreak >= 5; } },
+  { id: 'rounds_10', icon: '&#127947;', title: 'Regular', desc: 'Play 10 rounds', check: function(s) { return s.roundsPlayed >= 10; } },
+  { id: 'rounds_50', icon: '&#127775;', title: 'Dedicated', desc: 'Play 50 rounds', check: function(s) { return s.roundsPlayed >= 50; } },
+  { id: 'perfect', icon: '&#128081;', title: 'Flawless', desc: 'All pars or better in a round', check: function(s) { return s.hasPerfectRound; } },
+  { id: 'all_holes', icon: '&#127758;', title: 'Explorer', desc: 'Play every hole at least once', check: function(s) { return s.uniqueHolesPlayed >= ALL_HOLES.length; } },
+  { id: 'hard_win', icon: '&#128170;', title: 'Conqueror', desc: 'Win on a Hard course', check: function(s) { return s.hardCourseWins >= 1; } }
+];
+
+function getPlayerStats(playerId) {
+  var stats = { totalAces: 0, bestDiff: 999, bestStreak: 0, roundsPlayed: 0, hasPerfectRound: false, uniqueHolesPlayed: 0, hardCourseWins: 0 };
+  var holesPlayed = {};
+  for (var ri = 0; ri < state.rounds.length; ri++) {
+    var round = state.rounds[ri];
+    var result = null;
+    for (var rr = 0; rr < round.results.length; rr++) { if (round.results[rr].playerId === playerId) { result = round.results[rr]; break; } }
+    if (!result) continue;
+    stats.roundsPlayed++;
+    var course = null;
+    for (var cc = 0; cc < state.courses.length; cc++) { if (state.courses[cc].id === round.courseId) { course = state.courses[cc]; break; } }
+    if (!course) continue;
+    var holes = [];
+    for (var hi = 0; hi < course.holeIds.length; hi++) holes.push(ALL_HOLES[course.holeIds[hi]]);
+    var diff = result.total - course.totalPar;
+    if (diff < stats.bestDiff) stats.bestDiff = diff;
+    var streak = 0;
+    var allPar = true;
+    for (var si = 0; si < result.scores.length; si++) {
+      var sc = result.scores[si];
+      if (sc === null) continue;
+      holesPlayed[course.holeIds[si]] = true;
+      if (sc === 1) stats.totalAces++;
+      if (holes[si] && sc <= holes[si].par) { streak++; if (streak > stats.bestStreak) stats.bestStreak = streak; } else { streak = 0; allPar = false; }
+    }
+    if (allPar && result.scores.length > 0 && result.scores[0] !== null) stats.hasPerfectRound = true;
+    if (course.avgDifficulty >= 3.5) {
+      var best = result.total; var isWinner = true;
+      for (var wr = 0; wr < round.results.length; wr++) { if (round.results[wr].playerId !== playerId && round.results[wr].total < best) { isWinner = false; break; } }
+      if (isWinner) stats.hardCourseWins++;
+    }
+  }
+  stats.uniqueHolesPlayed = Object.keys(holesPlayed).length;
+  return stats;
+}
+
+// ===================== NAVIGATION =====================
+var currentPage = 'course';
+
+function renderNav() {
+  var pages = [
+    { id: 'course', label: '&#9971; Course' },
+    { id: 'play', label: '&#127948;&#65039; Play' },
+    { id: 'players', label: '&#128101; Golfers' },
+    { id: 'history', label: '&#128202; History' },
+    { id: 'achievements', label: '&#127942; Records' }
+  ];
+  var html = '';
+  for (var i = 0; i < pages.length; i++) {
+    var active = pages[i].id === currentPage ? ' active' : '';
+    html += '<button class="nav-btn' + active + '" data-page="' + pages[i].id + '">' + pages[i].label + '</button>';
+  }
+  document.getElementById('main-nav').innerHTML = html;
+  var btns = document.getElementById('main-nav').querySelectorAll('.nav-btn');
+  for (var b = 0; b < btns.length; b++) {
+    btns[b].addEventListener('click', function() { showPage(this.getAttribute('data-page')); });
+  }
+}
+
+function showPage(page) {
+  currentPage = page;
+  var pages = document.querySelectorAll('.page');
+  for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
+  document.getElementById('page-' + page).classList.add('active');
+  renderNav();
+  if (page === 'course') renderCoursePage();
+  if (page === 'play') renderPlayPage();
+  if (page === 'players') { state._showAllGolfers = false; renderPlayersPage(); }
+  if (page === 'history') renderHistoryPage();
+  if (page === 'achievements') renderAchievementsPage();
+}
+
+// ===================== COURSE BUILDER =====================
+function renderCoursePage() {
+  var html = '<div class="card">';
+  html += '<div class="card-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l6 3-6 3"/><path d="M12 2v13"/><circle cx="12" cy="18" r="3" fill="none"/></svg> Course Builder</div>';
+  html += '<div class="card-subtitle">8 tees &times; 4 flags = 32 possible holes. Build your layout manually or let the course generator surprise you.</div>';
+
+  html += '<div class="flex gap-16 flex-wrap mb-16">';
+  html += '<div style="flex:1;min-width:180px"><label class="label">Course Name</label><input class="input" id="course-name" placeholder="e.g. The Back Nine"></div>';
+  html += '<div><label class="label">Holes</label><div style="display:flex;align-items:center;gap:4px">';
+  html += '<button class="btn btn-sm ' + (state.courseSize === 9 ? 'btn-primary' : 'btn-secondary') + '" onclick="setCourseSize(9)">9</button>';
+  html += '<button class="btn btn-sm ' + (state.courseSize === 18 ? 'btn-primary' : 'btn-secondary') + '" onclick="setCourseSize(18)">18</button>';
+  html += '</div></div></div>';
+
+  html += '<label class="label">Difficulty Target</label><div class="diff-selector">';
+  var targets = [['all','All'],['easy','&#128994; Easy'],['medium','&#128992; Medium'],['hard','&#128308; Hard']];
+  for (var t = 0; t < targets.length; t++) {
+    var act = state.targetDiff === targets[t][0] || (state.targetDiff === null && targets[t][0] === 'all') ? ' active' : '';
+    html += '<button class="diff-btn' + act + '" onclick="setTarget(\'' + targets[t][0] + '\')">' + targets[t][1] + '</button>';
+  }
+  html += '</div>';
+
+  html += '<div class="flex gap-8 mb-16">';
+  html += '<button class="btn btn-primary" onclick="randomCourse()">&#127922; Generate Random</button>';
+  html += '<button class="btn btn-secondary" onclick="clearSelection()">Clear All</button></div>';
+
+  html += '<label class="label">Select Holes</label><div class="hole-grid">';
+  for (var i = 0; i < ALL_HOLES.length; i++) {
+    var h = ALL_HOLES[i];
+    var sel = state.selectedHoles[h.id] ? ' selected' : '';
+    html += '<div class="hole-chip' + sel + '" onclick="toggleHole(' + h.id + ')">';
+    html += '<span class="tee-dot tee-' + h.color + '"></span>';
+    html += '<div class="hname" style="color:' + getTeeCSSColor(h.color) + '">' + h.flag + '</div>';
+    html += '<div class="hinfo">Par ' + h.par + '</div></div>';
+  }
+  html += '</div>';
+
+  var selIds = Object.keys(state.selectedHoles);
+  if (selIds.length > 0) {
+    var totalPar = 0, totalDiff = 0;
+    for (var s = 0; s < selIds.length; s++) { var sh = ALL_HOLES[parseInt(selIds[s])]; totalPar += sh.par; totalDiff += sh.difficulty; }
+    var avgDiff = totalDiff / selIds.length;
+    var diffLabel = avgDiff <= 2 ? 'Easy' : avgDiff <= 3.5 ? 'Medium' : 'Hard';
+    html += '<div class="course-summary">';
+    html += '<div class="cs-item"><div class="val">' + selIds.length + '/' + state.courseSize + '</div><div class="lbl">Holes</div></div>';
+    html += '<div class="cs-item"><div class="val">' + totalPar + '</div><div class="lbl">Total Par</div></div>';
+    html += '<div class="cs-item"><div class="val">' + diffLabel + '</div><div class="lbl">Difficulty</div></div>';
+    html += '<div class="cs-item"><div class="val">' + avgDiff.toFixed(1) + '</div><div class="lbl">Rating</div></div></div>';
+    // Reorder section - shows running list as holes are picked
+    if (state.holeOrder.length > 0) {
+      html += '<div class="mt-12 mb-12"><label class="label">Hole Order (' + state.holeOrder.length + '/' + state.courseSize + ') <span style="font-weight:400;font-size:11px;color:var(--text-muted)">(use arrows to reorder)</span></label>';
+      html += '<div style="display:flex;flex-direction:column;gap:4px">';
+      for (var ho = 0; ho < state.holeOrder.length; ho++) {
+        var holeData = ALL_HOLES[state.holeOrder[ho]];
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">';
+        html += '<span style="color:var(--text-muted);font-size:12px;font-weight:700;width:20px">' + (ho+1) + '</span>';
+        html += '<span class="tee-dot tee-' + holeData.color + '"></span>';
+        html += '<span style="font-weight:600;color:' + getTeeCSSColor(holeData.color) + '">' + holeData.flag + '</span>';
+        html += '<span style="font-size:11px;color:var(--text-muted);margin-left:4px">Par ' + holeData.par + '</span>';
+        html += '<span style="flex:1"></span>';
+        if (ho > 0) html += '<button class="btn btn-sm btn-secondary" style="padding:4px 8px;min-height:32px" onclick="moveHoleUp(' + ho + ')">&#9650;</button>';
+        if (ho < state.holeOrder.length - 1) html += '<button class="btn btn-sm btn-secondary" style="padding:4px 8px;min-height:32px" onclick="moveHoleDown(' + ho + ')">&#9660;</button>';
+        html += '</div>';
+      }
+      html += '</div></div>';
+      if (state.holeOrder.length >= state.courseSize) {
+        html += '<button class="btn btn-gold mt-12" onclick="saveCourse()">&#128190; Save Course</button>';
+      }
+    }
+  }
+  html += '</div>';
+
+  // Saved courses (filtered by difficulty)
+  html += '<div class="card"><div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg> Choose a Course</div>';
+  html += '<div class="card-subtitle">Select a course to play, or build a new one above.</div>';
+  html += '<div class="mb-12"><input class="input" placeholder="&#128269; Search courses..." oninput="filterCourses(this.value)" style="font-size:13px"></div>';
+  var filteredCourses = state.courses.filter(function(c) {
+    if (!state.targetDiff) return true;
+    if (state.targetDiff === "easy") return c.avgDifficulty <= 2;
+    if (state.targetDiff === "medium") return c.avgDifficulty > 2 && c.avgDifficulty <= 3.5;
+    if (state.targetDiff === "hard") return c.avgDifficulty > 3.5;
+    return true;
+  });
+  if (filteredCourses.length === 0) {
+    html += '<div class="empty-state"><div class="emoji">&#9971;</div><p>' + (state.courses.length === 0 ? 'No courses yet. Build your first layout above!' : 'No courses match this difficulty. Try a different filter.') + '</p></div>';
+  } else {
+    for (var c = 0; c < filteredCourses.length; c++) {
+      var course = filteredCourses[c];
+      var bclass = course.avgDifficulty <= 2 ? 'badge-easy' : course.avgDifficulty <= 3.5 ? 'badge-med' : 'badge-hard';
+      var blabel = course.avgDifficulty <= 2 ? 'Easy' : course.avgDifficulty <= 3.5 ? 'Medium' : 'Hard';
+      var isSelected = state.selectedCourse && state.selectedCourse.id === course.id;
+      var rowStyle = isSelected ? 'border:2px solid var(--primary);background:rgba(124,252,0,0.05)' : '';
+      html += '<div class="player-row" style="' + rowStyle + '">';
+      html += '<div style="flex:1"><div style="font-weight:600;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3);text-underline-offset:2px" onclick="showCourseDetail(' + course.id + ')">' + course.name + '</div>';
+      html += '<div style="font-size:12px;color:var(--text-muted)">' + course.holeIds.length + ' holes &middot; Par ' + course.totalPar + '</div></div>';
+      html += '<span class="badge ' + bclass + '">' + blabel + '</span> ';
+      if (isSelected) {
+        html += '<button class="btn btn-sm btn-secondary" onclick="deselectCourse()">Deselect</button>';
+      } else {
+        html += '<button class="btn btn-sm btn-primary" onclick="selectCourse(' + course.id + ')">Play</button>';
+      }
+      html += '</div>';
+    }
+  }
+  html += '</div>';
+  document.getElementById('page-course').innerHTML = html;
+}
+
+function setCourseSize(n) {
+  state.courseSize = n;
+  renderCoursePage();
+}
+function setTarget(t) { state.targetDiff = t === 'all' ? null : t; renderCoursePage(); }
+function toggleHole(id) {
+  if (state.selectedHoles[id]) { 
+    delete state.selectedHoles[id]; 
+    state.holeOrder = state.holeOrder.filter(function(h) { return h !== id; });
+  } else { 
+    if (Object.keys(state.selectedHoles).length < state.courseSize) { 
+      state.selectedHoles[id] = true; 
+      state.holeOrder.push(id);
+    }
+  }
+  renderCoursePage();
+}
+function randomCourse() {
+  state.selectedHoles = {};
+  var pool = ALL_HOLES.slice();
+  if (state.targetDiff === 'easy') pool = pool.filter(function(h) { return h.difficulty <= 2; });
+  else if (state.targetDiff === 'medium') pool = pool.filter(function(h) { return h.difficulty >= 2 && h.difficulty <= 4; });
+  else if (state.targetDiff === 'hard') pool = pool.filter(function(h) { return h.difficulty >= 3; });
+  for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp; }
+  var pick = pool.slice(0, state.courseSize);
+  state.holeOrder = [];
+    for (var p = 0; p < pick.length; p++) { state.selectedHoles[pick[p].id] = true; state.holeOrder.push(pick[p].id); }
+  // Auto-create a temp course and select it for play
+  var holeIds = pick.map(function(h) { return h.id; });
+  var tPar = 0, tDiff = 0;
+  for (var i = 0; i < holeIds.length; i++) { tPar += ALL_HOLES[holeIds[i]].par; tDiff += ALL_HOLES[holeIds[i]].difficulty; }
+  state.selectedCourse = { id: -1, name: 'Random Course', holeIds: holeIds, totalPar: tPar, avgDifficulty: tDiff / holeIds.length };
+  renderCoursePage();
+}
+function clearSelection() { state.selectedHoles = {}; state.holeOrder = []; renderCoursePage(); }
+
+function moveHoleUp(idx) {
+  if (idx <= 0) return;
+  var temp = state.holeOrder[idx - 1];
+  state.holeOrder[idx - 1] = state.holeOrder[idx];
+  state.holeOrder[idx] = temp;
+  renderCoursePage();
+}
+
+function moveHoleDown(idx) {
+  if (idx >= state.holeOrder.length - 1) return;
+  var temp = state.holeOrder[idx + 1];
+  state.holeOrder[idx + 1] = state.holeOrder[idx];
+  state.holeOrder[idx] = temp;
+  renderCoursePage();
+}
+
+function saveCourse() {
+  var nameEl = document.getElementById('course-name');
+  var name = nameEl && nameEl.value ? nameEl.value : 'Course ' + (state.courses.length + 1);
+  var holeIds = state.holeOrder.length > 0 ? state.holeOrder.slice() : Object.keys(state.selectedHoles).map(Number);
+  var totalPar = 0, totalDiff = 0;
+  for (var i = 0; i < holeIds.length; i++) { totalPar += ALL_HOLES[holeIds[i]].par; totalDiff += ALL_HOLES[holeIds[i]].difficulty; }
+  var newCourse = { id: Date.now(), name: name, holeIds: holeIds, totalPar: totalPar, avgDifficulty: totalDiff / holeIds.length };
+  state.courses.push(newCourse);
+  state.selectedCourse = newCourse;
+  state.selectedHoles = {};
+  state.holeOrder = [];
+  saveState();
+  renderCoursePage();
+}
+function selectCourse(id) {
+  for (var i = 0; i < state.courses.length; i++) {
+    if (state.courses[i].id === id) { state.selectedCourse = state.courses[i]; break; }
+  }
+  renderCoursePage();
+}
+
+function deselectCourse() {
+  state.selectedCourse = null;
+  renderCoursePage();
+}
+
+function deleteCourse(id) { state.courses = state.courses.filter(function(c) { return c.id !== id; }); if (state.selectedCourse && state.selectedCourse.id === id) state.selectedCourse = null; saveState(); renderCoursePage(); }
+
+function renameCourse(id) {
+  var course = null;
+  for (var i = 0; i < state.courses.length; i++) { if (state.courses[i].id === id) { course = state.courses[i]; break; } }
+  if (!course) return;
+  var newName = prompt('Rename course:', course.name);
+  if (newName && newName.trim()) {
+    course.name = newName.trim();
+    // Update name in round history too
+    for (var r = 0; r < state.rounds.length; r++) {
+      if (state.rounds[r].courseId === id) state.rounds[r].courseName = course.name;
+    }
+    saveState();
+    renderCoursePage();
+  }
+}
+
+
+// ===================== PLAY =====================
+function renderPlayPage() {
+  var html = '<div class="card">';
+  html += '<div class="card-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="18" r="3"/><path d="M12 2v13"/><path d="M12 2l6 3-6 3"/></svg> New Round</div>';
+
+  if (state.gameMode === 'horse') {
+    html += '<div class="mb-16" style="padding:12px;background:rgba(74,222,128,0.05);border-radius:var(--radius-sm);border:1px solid rgba(74,222,128,0.1)">';
+    html += '<div style="font-size:13px;color:var(--text-secondary)">&#128052; <strong>H.O.R.S.E.</strong> &mdash; Shooter calls a standard hole (tee/flag) or goes freestyle (putt from anywhere). No pre-set course needed.</div></div>';
+  } else {
+    // Stroke or Match - show course or pick-as-you-go option
+    html += '<div class="mb-16"><label class="label">Course</label>';
+    html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
+    html += '<button class="btn btn-sm ' + (!state.pickAsYouGo ? 'btn-primary' : 'btn-secondary') + '" onclick="setPickMode(false)">Pre-set Course</button>';
+    html += '<button class="btn btn-sm ' + (state.pickAsYouGo ? 'btn-primary' : 'btn-secondary') + '" onclick="setPickMode(true)">Pick as You Go</button></div>';
+    if (state.pickAsYouGo) {
+      html += '<div style="padding:12px;background:rgba(74,222,128,0.05);border-radius:var(--radius-sm);border:1px solid rgba(74,222,128,0.1)">';
+      html += '<div style="font-size:13px;color:var(--text-secondary)">Players choose each hole in sequence. Select tee/flag before each putt.</div></div>';
+    } else if (state.selectedCourse) {
+      var sc = state.selectedCourse;
+      var scDl = sc.avgDifficulty <= 2 ? 'Easy' : sc.avgDifficulty <= 3.5 ? 'Medium' : 'Hard';
+      var scBclass = sc.avgDifficulty <= 2 ? 'badge-easy' : sc.avgDifficulty <= 3.5 ? 'badge-med' : 'badge-hard';
+      html += '<div class="player-row" style="border:2px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.05)">';
+      html += '<div style="flex:1"><div style="font-weight:700;font-size:15px">' + sc.name + '</div>';
+      html += '<div style="font-size:12px;color:var(--text-muted)">' + sc.holeIds.length + ' holes &middot; Par ' + sc.totalPar + '</div></div>';
+      html += '<span class="badge ' + scBclass + '">' + scDl + '</span></div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">Change on the Course tab.</div>';
+    } else {
+      html += '<div style="padding:16px;text-align:center;background:rgba(20,45,25,0.5);border-radius:var(--radius-sm);border:1px dashed var(--border)">';
+      html += '<div style="color:var(--text-muted);font-size:13px">No course selected</div>';
+      html += '<button class="btn btn-sm btn-primary" style="margin-top:8px" onclick="showPage(\'course\')">&#9971; Choose a Course</button></div>';
+    }
+    html += '</div>';
+  }
+
+  html += '<div class="mb-16"><label class="label">Players</label>';
+  for (var p = 0; p < state.players.length; p++) {
+    var pl = state.players[p];
+    html += '<label class="player-row" style="cursor:pointer"><input type="checkbox" class="play-player-cb" value="' + pl.id + '" checked style="accent-color:var(--primary);width:18px;height:18px">';
+    html += '<span style="flex:1;font-weight:500">' + pl.name + '</span>';
+    html += '<span style="font-family:var(--font-mono);color:var(--text-secondary);font-size:13px">' + (pl.handicap !== null ? 'HC ' + pl.handicap : '--') + '</span></label>';
+  }
+  html += '</div>';
+
+  html += '<div class="mb-16"><label class="label">Game Mode</label>';
+  html += '<div style="display:flex;gap:4px;flex-wrap:wrap">';
+  var modes = [['stroke','&#9971; Stroke'],['match','&#9876;&#65039; Match'],['horse','&#128052; H.O.R.S.E.']];
+  for (var mi = 0; mi < modes.length; mi++) {
+    html += '<button class="btn btn-sm ' + (state.gameMode === modes[mi][0] ? 'btn-primary' : 'btn-secondary') + '" onclick="setGameMode(\'' + modes[mi][0] + '\')">' + modes[mi][1] + '</button>';
+  }
+  html += '</div>';
+  var modeDescs = { stroke: 'Lowest total strokes wins.', match: 'Win each hole. Most holes won wins.', horse: 'Shooter picks the challenge. Fail to match = earn a letter.' };
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + modeDescs[state.gameMode] + '</div></div>';
+
+  html += '<div class="toggle-wrap"><div class="toggle' + (state.useHandicap ? ' on' : '') + '" onclick="toggleHC()"></div>';
+  html += '<span style="font-size:13px;color:var(--text-secondary)">Apply handicaps to scoring</span></div>';
+  html += '<button class="btn btn-primary mt-12" onclick="startRound()">&#9654;&#65039; Tee Off!</button></div>';
+
+  if (state.currentRound) {
+    enterScorecardMode();
+    if (state.showPauseMenu) {
+      document.getElementById('page-play').innerHTML = renderPauseMenu();
+    } else if (state.currentRound.gameMode === 'horse') {
+      document.getElementById('page-play').innerHTML = renderHorseMode();
+    } else if (state.currentRound.pickAsYouGo) {
+      document.getElementById('page-play').innerHTML = renderPickAsYouGo();
+    } else {
+      document.getElementById('page-play').innerHTML = renderScorecard();
+    }
+    return;
+  }
+  document.getElementById('page-play').innerHTML = html;
+}
+
+function setGameMode(mode) { state.gameMode = mode; renderPlayPage(); }
+function setPickMode(val) { state.pickAsYouGo = val; renderPlayPage(); }
+function toggleHC() { state.useHandicap = !state.useHandicap; renderPlayPage(); }
+
+function startRound() {
+  var course = state.selectedCourse;
+  // Horse doesn't need a course
+  if (state.gameMode === 'horse') { startHorseRound(); return; }
+  // Pick-as-you-go doesn't need a pre-selected course
+  if (state.pickAsYouGo) { startPickAsYouGoRound(); return; }
+  if (!course) return;
+  var checks = document.querySelectorAll('.play-player-cb:checked');
+  var playerIds = [];
+  for (var c = 0; c < checks.length; c++) playerIds.push(parseInt(checks[c].value));
+  if (playerIds.length === 0) return;
+  var players = state.players.filter(function(p) { return playerIds.indexOf(p.id) >= 0; });
+  var scores = [];
+  for (var pi = 0; pi < players.length; pi++) { var row = []; for (var hi = 0; hi < course.holeIds.length; hi++) row.push(null); scores.push(row); }
+  state.currentRound = { courseId: courseId, courseName: course.name, holes: course.holeIds.map(function(id) { return ALL_HOLES[id]; }), players: players, scores: scores, useHandicap: state.useHandicap, gameMode: state.gameMode, currentHole: 0 };
+  renderPlayPage();
+}
+
+
+function enterScorecardMode() {
+  document.getElementById('main-nav').style.display = 'none';
+  document.querySelector('.app-header').style.display = 'none';
+  document.querySelector('.container').style.padding = '12px';
+  document.querySelector('.container').style.maxWidth = '540px';
+}
+
+function exitScorecardMode() {
+  // Show pause menu overlay instead of quitting
+  state.showPauseMenu = true;
+  renderPlayPage();
+}
+
+function resumeRound() {
+  state.showPauseMenu = false;
+  renderPlayPage();
+}
+
+function confirmQuit() {
+  var shouldQuit = false;
+  try { shouldQuit = window.confirm('Abandon this round? Scores will not be saved.'); } catch(e) { shouldQuit = true; }
+  if (shouldQuit) quitRound();
+}
+
+function quitRound() {
+  state.showPauseMenu = false;
+  document.getElementById('main-nav').style.display = '';
+  document.querySelector('.app-header').style.display = '';
+  document.querySelector('.container').style.padding = '';
+  document.querySelector('.container').style.maxWidth = '';
+  state.currentRound = null;
+  showPage('play');
+}
+
+function renderPauseMenu() {
+  var r = state.currentRound;
+  var hi = r.currentHole;
+  var hole = r.holes[hi];
+  var coursePar = 0;
+  for (var cp = 0; cp < r.holes.length; cp++) coursePar += r.holes[cp].par;
+
+  var html = '<div style="padding:16px">';
+  html += '<div style="text-align:center;margin-bottom:24px">';
+  html += '<div style="font-family:var(--font);font-size:22px;font-weight:700;color:var(--primary);margin-bottom:4px">Round Paused</div>';
+  html += '<div style="font-size:13px;color:var(--text-secondary)">' + r.courseName + ' &middot; Hole ' + (hi + 1) + ' of ' + r.holes.length + '</div></div>';
+
+  // Resume button (prominent)
+  html += '<button class="btn btn-primary" style="width:100%;margin-bottom:12px;justify-content:center;font-size:16px;padding:14px" onclick="resumeRound()">&#9654;&#65039; Resume Round</button>';
+
+  // Hole history section
+  html += '<div class="card" style="margin-top:16px"><div class="card-title" style="font-size:15px">&#128202; Best Scores &mdash; ' + hole.fullName + ' (Par ' + hole.par + ')</div>';
+  var holeScores = getHoleHistory(hole.id);
+  if (holeScores.length === 0) {
+    html += '<div style="font-size:13px;color:var(--text-muted);padding:8px 0">No history for this hole yet.</div>';
+  } else {
+    html += '<table class="history-table"><thead><tr><th>Player</th><th>Best</th><th>Avg</th><th>Played</th></tr></thead><tbody>';
+    for (var hs = 0; hs < holeScores.length; hs++) {
+      var h = holeScores[hs];
+      var bestColor = h.best <= hole.par ? 'var(--primary)' : h.best === hole.par + 1 ? 'var(--warning)' : 'var(--error)';
+      html += '<tr><td>' + h.name + '</td><td style="font-weight:700;color:' + bestColor + ';font-family:var(--font-mono)">' + h.best + '</td>';
+      html += '<td style="font-family:var(--font-mono)">' + h.avg + '</td><td style="color:var(--text-muted)">' + h.count + 'x</td></tr>';
+    }
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  // Course history section
+  html += '<div class="card"><div class="card-title" style="font-size:15px">&#127942; Best Rounds &mdash; ' + r.courseName + '</div>';
+  var courseScores = getCourseHistory(r.courseId);
+  if (courseScores.length === 0) {
+    html += '<div style="font-size:13px;color:var(--text-muted);padding:8px 0">No completed rounds on this course yet.</div>';
+  } else {
+    html += '<table class="history-table"><thead><tr><th>Player</th><th>Best</th><th>vs Par</th><th>Rounds</th></tr></thead><tbody>';
+    for (var cs = 0; cs < courseScores.length; cs++) {
+      var c = courseScores[cs];
+      var vsPar = c.best - coursePar;
+      var vsStr = vsPar > 0 ? '+' + vsPar : vsPar === 0 ? 'E' : '' + vsPar;
+      var vsColor = vsPar < 0 ? 'var(--primary)' : vsPar === 0 ? 'var(--text)' : 'var(--error)';
+      html += '<tr><td>' + c.name + '</td><td style="font-weight:700;font-family:var(--font-mono)">' + c.best + '</td>';
+      html += '<td style="color:' + vsColor + ';font-family:var(--font-mono)">' + vsStr + '</td><td style="color:var(--text-muted)">' + c.count + '</td></tr>';
+    }
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  // Quit button (less prominent, at bottom)
+  html += '<button class="btn btn-secondary" style="width:100%;margin-top:16px;justify-content:center;color:var(--error)" onclick="confirmQuit()">&#128683; Quit Round</button>';
+
+  html += '</div>';
+  return html;
+}
+
+function getHoleHistory(holeId) {
+  var playerData = {};
+  for (var ri = 0; ri < state.rounds.length; ri++) {
+    var round = state.rounds[ri];
+    var course = null;
+    for (var ci = 0; ci < state.courses.length; ci++) { if (state.courses[ci].id === round.courseId) { course = state.courses[ci]; break; } }
+    if (!course) continue;
+    var holeIdx = -1;
+    for (var hi = 0; hi < course.holeIds.length; hi++) { if (course.holeIds[hi] === holeId) { holeIdx = hi; break; } }
+    if (holeIdx === -1) continue;
+    for (var rr = 0; rr < round.results.length; rr++) {
+      var res = round.results[rr];
+      var score = res.scores[holeIdx];
+      if (score === null || score === undefined) continue;
+      if (!playerData[res.playerId]) playerData[res.playerId] = { name: res.playerName, scores: [] };
+      playerData[res.playerId].scores.push(score);
+    }
+  }
+  var result = [];
+  var keys = Object.keys(playerData);
+  for (var k = 0; k < keys.length; k++) {
+    var pd = playerData[keys[k]];
+    var best = Math.min.apply(null, pd.scores);
+    var avg = (pd.scores.reduce(function(a, b) { return a + b; }, 0) / pd.scores.length).toFixed(1);
+    result.push({ name: pd.name, best: best, avg: avg, count: pd.scores.length });
+  }
+  result.sort(function(a, b) { return a.best - b.best; });
+  return result;
+}
+
+function getCourseHistory(courseId) {
+  var playerData = {};
+  for (var ri = 0; ri < state.rounds.length; ri++) {
+    var round = state.rounds[ri];
+    if (round.courseId !== courseId) continue;
+    for (var rr = 0; rr < round.results.length; rr++) {
+      var res = round.results[rr];
+      if (!playerData[res.playerId]) playerData[res.playerId] = { name: res.playerName, totals: [] };
+      playerData[res.playerId].totals.push(res.total);
+    }
+  }
+  var result = [];
+  var keys = Object.keys(playerData);
+  for (var k = 0; k < keys.length; k++) {
+    var pd = playerData[keys[k]];
+    var best = Math.min.apply(null, pd.totals);
+    result.push({ name: pd.name, best: best, count: pd.totals.length });
+  }
+  result.sort(function(a, b) { return a.best - b.best; });
+  return result;
+}
+
+function renderScorecard() {
+  var r = state.currentRound;
+  var coursePar = 0;
+  for (var cp = 0; cp < r.holes.length; cp++) coursePar += r.holes[cp].par;
+
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px">';
+  html += '<button class="btn btn-sm btn-secondary" onclick="exitScorecardMode()">&larr; Menu</button>';
+  html += '<div style="text-align:center;flex:1"><div style="font-family:var(--font);font-weight:700;font-size:16px;color:var(--primary)">' + r.courseName + '</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted)">Par ' + coursePar + ' &middot; ' + (r.gameMode === 'match' ? '&#9876;&#65039; Match Play' : '&#9971; Stroke Play') + '</div></div>';
+  html += '<button class="btn btn-sm btn-gold" onclick="finishRound()">&#9989; Done</button></div>';
+
+  // Scorecard grid - paper style
+  html += '<div class="scorecard-card" style="padding:10px;overflow-x:auto">';
+  html += '<table class="sc-table"><thead><tr><th style="min-width:60px">HOLE</th>';
+
+  // Split into rows of 9 if more than 9 holes
+  var holesPerRow = r.holes.length > 9 ? 9 : r.holes.length;
+  var numRows = Math.ceil(r.holes.length / holesPerRow);
+
+  for (var row = 0; row < numRows; row++) {
+    var startH = row * holesPerRow;
+    var endH = Math.min(startH + holesPerRow, r.holes.length);
+
+    if (row > 0) html += '<tr><td colspan="' + (holesPerRow + 3) + '" style="height:12px;border:none"></td></tr>';
+
+    // Header row with hole names
+    html += '<tr style="background:var(--scorecard-header)">';
+    html += '<th style="text-align:left;padding-left:8px;color:white;font-size:10px">HOLE</th>';
+    for (var h = startH; h < endH; h++) {
+      html += '<th style="color:white;font-size:10px;padding:6px 2px;cursor:pointer" onclick="showHoleDetail(' + r.holes[h].id + ')"><span class="tee-dot tee-' + r.holes[h].color + '" style="width:8px;height:8px;border-width:1px"></span><br>' + r.holes[h].name + '</th>';
+    }
+    html += '<th style="color:white;font-size:10px">TOT</th><th style="color:white;font-size:10px">+/-</th></tr>';
+
+    // Par row
+    html += '<tr class="par-row"><td style="text-align:left;padding-left:8px;font-size:10px;font-weight:600">PAR</td>';
+    var rowPar = 0;
+    for (var h = startH; h < endH; h++) { html += '<td style="font-size:11px">' + r.holes[h].par + '</td>'; rowPar += r.holes[h].par; }
+    html += '<td style="font-weight:700">' + rowPar + '</td><td></td></tr>';
+
+    // Player rows
+    for (var pi = 0; pi < r.players.length; pi++) {
+      html += '<tr><td style="text-align:left;padding-left:8px;font-size:12px;font-weight:600;white-space:nowrap">' + r.players[pi].name + '</td>';
+      var rowTotal = 0;
+      for (var hi = startH; hi < endH; hi++) {
+        var val = r.scores[pi][hi];
+        var cellStyle = 'cursor:pointer;font-weight:700;font-size:13px;';
+        var display = '&middot;';
+        var scoreClass = '';
+        if (val !== null) {
+          display = val;
+          rowTotal += val;
+          var d = val - r.holes[hi].par;
+          if (val === 1 && r.holes[hi].par >= 2) scoreClass = 'sc-hio';
+          else if (d <= -1.5) scoreClass = 'sc-dblcircle';
+          else if (d < 0) scoreClass = 'sc-circle';
+          else if (d === 0) scoreClass = '';
+          else if (d <= 1) scoreClass = 'sc-square';
+          else scoreClass = 'sc-dblsquare';
+        } else {
+          cellStyle += 'color:#ccc;';
+        }
+        html += '<td style="' + cellStyle + 'position:relative" onclick="openScorePicker(' + pi + ',' + hi + ',this)"><span class="' + scoreClass + '">' + display + '</span></td>';
+      }
+      var parThruPlayed = 0;
+      for (var ph2 = startH; ph2 < endH; ph2++) { if (r.scores[pi][ph2] !== null) parThruPlayed += r.holes[ph2].par; }
+      var rowDiff = rowTotal > 0 ? rowTotal - parThruPlayed : 0;
+      var rowDiffStr = rowTotal > 0 ? (rowDiff > 0 ? '+' + rowDiff : rowDiff === 0 ? 'E' : '' + rowDiff) : '-';
+      var rowDiffColor = rowDiff < 0 ? '#155724' : rowDiff > 0 ? '#721c24' : 'var(--scorecard-text)';
+      html += '<td style="font-weight:700;font-size:13px">' + (rowTotal || '-') + '</td>';
+      html += '<td style="font-weight:700;font-size:12px;color:' + rowDiffColor + '">' + rowDiffStr + '</td></tr>';
+    }
+  }
+
+  html += '</table></div>';
+
+  // Match play status
+  if (r.gameMode === "match" && r.players.length >= 2) {
+    html += "<div style=\"margin-top:12px;padding:12px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)\">";
+    html += "<div style=\"font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:600\">Match Play Standing</div>";
+    // Calculate holes won per player
+    var holesWon = [];
+    var halved = 0;
+    for (var mp = 0; mp < r.players.length; mp++) holesWon.push(0);
+    for (var mh = 0; mh < r.holes.length; mh++) {
+      var bestScore = 99;
+      var bestPlayers = [];
+      var allScored = true;
+      for (var mp = 0; mp < r.players.length; mp++) {
+        var s = r.scores[mp][mh];
+        if (s === null) { allScored = false; break; }
+        if (s < bestScore) { bestScore = s; bestPlayers = [mp]; }
+        else if (s === bestScore) bestPlayers.push(mp);
+      }
+      if (!allScored) continue;
+      if (bestPlayers.length === 1) holesWon[bestPlayers[0]]++;
+      else halved++;
+    }
+    var holesPlayed = 0;
+    for (var mp = 0; mp < holesWon.length; mp++) holesPlayed += holesWon[mp];
+    holesPlayed += halved;
+
+    for (var mp = 0; mp < r.players.length; mp++) {
+      var isLeading = true;
+      for (var mp2 = 0; mp2 < r.players.length; mp2++) { if (mp2 !== mp && holesWon[mp2] > holesWon[mp]) isLeading = false; }
+      var barPct = holesPlayed > 0 ? Math.round((holesWon[mp] / r.holes.length) * 100) : 0;
+      var leadStyle = isLeading && holesWon[mp] > 0 ? "color:var(--primary);font-weight:700" : "";
+      html += "<div style=\"display:flex;align-items:center;gap:8px;margin-bottom:6px\">";
+      html += "<div style=\"width:60px;font-size:13px;font-weight:600;" + leadStyle + "\">" + r.players[mp].name + "</div>";
+      html += "<div style=\"flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden\"><div style=\"height:100%;width:" + barPct + "%;background:var(--primary);border-radius:4px;transition:width 0.3s\"></div></div>";
+      html += "<div style=\"font-family:var(--font-mono);font-size:14px;font-weight:700;width:30px;text-align:right;" + leadStyle + "\">" + holesWon[mp] + "</div>";
+      html += "</div>";
+    }
+    if (halved > 0) html += "<div style=\"font-size:11px;color:var(--text-muted);margin-top:4px\">Halved: " + halved + " hole" + (halved > 1 ? "s" : "") + "</div>";
+    html += "</div>";
+  }
+
+  // Legend
+  html += '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:10px;color:var(--text-muted);align-items:center">';
+  html += '<span><span class="sc-dblcircle" style="width:16px;height:16px;line-height:16px;font-size:9px">1</span> HIO/Eagle</span>';
+  html += '<span><span class="sc-circle" style="width:16px;height:16px;line-height:16px;font-size:9px">2</span> Birdie</span>';
+  html += '<span style="font-size:11px">3 Par</span>';
+  html += '<span><span class="sc-square" style="width:16px;height:16px;line-height:16px;font-size:9px">4</span> Bogey</span>';
+  html += '<span><span class="sc-dblsquare" style="width:16px;height:16px;line-height:16px;font-size:9px">5</span> Dbl+</span>';
+  html += '</div>';
+
+  return html;
+}
+
+// Score picker popup
+var activePickerCell = null;
+
+function openScorePicker(pi, hi, cell) {
+  closePicker();
+  activePickerCell = cell;
+  var popup = document.createElement("div");
+  popup.id = "score-picker";
+  popup.style.cssText = "position:absolute;top:100%;left:50%;transform:translateX(-50%);background:white;border-radius:24px;padding:8px;display:flex;gap:6px;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:200;border:1px solid #ccc;";
+  for (var i = 1; i <= 6; i++) {
+    var btn = document.createElement("button");
+    btn.textContent = i;
+    btn.style.cssText = "width:48px;height:48px;border-radius:50%;border:2px solid #ddd;background:white;cursor:pointer;font-weight:700;font-size:18px;color:#2a2a1a;transition:all 0.1s;-webkit-tap-highlight-color:rgba(74,222,128,0.3);touch-action:manipulation;";
+    btn.onmouseover = function() { this.style.background = "#7cfc00"; this.style.borderColor = "#5cb800"; };
+    btn.onmouseout = function() { this.style.background = "white"; this.style.borderColor = "#ddd"; };
+    btn.onclick = (function(val) { return function(e) { e.stopPropagation(); pickScore(pi, hi, val); }; })(i);
+    btn.ontouchstart = function() { this.style.background = '#7cfc00'; this.style.borderColor = '#5cb800'; this.style.transform = 'scale(1.1)'; };
+    btn.ontouchend = function() { this.style.background = 'white'; this.style.borderColor = '#ddd'; this.style.transform = 'scale(1)'; };
+    popup.appendChild(btn);
+  }
+  // Clear button
+  var clr = document.createElement("button");
+  clr.textContent = "\u2715";
+  clr.style.cssText = "width:48px;height:48px;border-radius:50%;border:2px solid #ddd;background:#f8f8f8;cursor:pointer;font-size:16px;color:#999;-webkit-tap-highlight-color:rgba(74,222,128,0.3);touch-action:manipulation;";
+  clr.onclick = function(e) { e.stopPropagation(); pickScore(pi, hi, null); };
+  popup.appendChild(clr);
+  cell.style.position = "relative";
+  cell.appendChild(popup);
+  setTimeout(function() { 
+      document.addEventListener("click", closePicker, { once: true }); 
+      document.addEventListener("touchend", function(e) { 
+        if (!document.getElementById('score-picker') || !document.getElementById('score-picker').contains(e.target)) closePicker(); 
+      }, { once: true }); 
+    }, 50);
+}
+
+function closePicker() {
+  var p = document.getElementById("score-picker");
+  if (p) p.remove();
+}
+
+function pickScore(pi, hi, val) {
+  state.currentRound.scores[pi][hi] = val;
+  closePicker();
+  renderPlayPage();
+}
+
+
+// ===================== H.O.R.S.E. MODE =====================
+function startHorseRound() {
+  var checks = document.querySelectorAll('.play-player-cb:checked');
+  var playerIds = [];
+  for (var c = 0; c < checks.length; c++) playerIds.push(parseInt(checks[c].value));
+  if (playerIds.length < 2) return;
+  var players = state.players.filter(function(p) { return playerIds.indexOf(p.id) >= 0; });
+  
+  state.currentRound = {
+    gameMode: 'horse',
+    players: players,
+    shooterIdx: 0,
+    letters: players.map(function() { return 0; }),
+    eliminated: players.map(function() { return false; }),
+    horseWord: 'HORSE',
+    challenges: [],
+    currentChallenge: null,
+    challengeType: 'standard',
+    useHandicap: false,
+    courseId: -1,
+    courseName: 'H.O.R.S.E.'
+  };
+  renderPlayPage();
+}
+
+function renderHorseMode() {
+  var r = state.currentRound;
+  var word = r.horseWord;
+  
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px">';
+  html += '<button class="btn btn-sm btn-secondary" onclick="exitScorecardMode()">&larr; Menu</button>';
+  html += '<div style="text-align:center;flex:1"><div style="font-family:var(--font-sans);font-weight:700;font-size:16px;color:var(--primary)">&#128052; H.O.R.S.E.</div></div>';
+  html += '<button class="btn btn-sm btn-gold" onclick="finishHorse()">&#9989; End</button></div>';
+
+  // Player letters display
+  html += '<div style="margin-bottom:16px">';
+  for (var pi = 0; pi < r.players.length; pi++) {
+    var isShooter = pi === r.shooterIdx;
+    var isOut = r.eliminated[pi];
+    var opacity = isOut ? '0.35' : '1';
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;border-radius:8px;opacity:' + opacity + ';background:' + (isShooter ? 'rgba(74,222,128,0.1)' : 'rgba(20,45,25,0.4)') + ';border:1px solid ' + (isShooter ? 'rgba(74,222,128,0.3)' : 'rgba(74,222,128,0.05)') + '">';
+    html += '<div style="font-weight:600;width:70px">' + r.players[pi].name + '</div>';
+    html += '<div style="flex:1;display:flex;gap:3px">';
+    for (var li = 0; li < word.length; li++) {
+      var hasLetter = li < r.letters[pi];
+      html += '<span style="width:24px;height:24px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;' + (hasLetter ? 'background:var(--error);color:white' : 'background:rgba(20,45,25,0.6);color:var(--text-muted)') + '">' + word[li] + '</span>';
+    }
+    html += '</div>';
+    if (isShooter && !isOut) html += '<span style="font-size:11px;color:var(--primary);font-weight:600">SHOOTER</span>';
+    if (isOut) html += '<span style="font-size:11px;color:var(--error);font-weight:600">OUT</span>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // Check if game is over
+  var activePlayers = 0;
+  var winnerId = -1;
+  for (var pi = 0; pi < r.players.length; pi++) { if (!r.eliminated[pi]) { activePlayers++; winnerId = pi; } }
+  if (activePlayers <= 1 && r.challenges.length > 0) {
+    html += '<div style="text-align:center;padding:24px;background:rgba(251,191,36,0.1);border-radius:12px;border:1px solid rgba(251,191,36,0.3);margin-bottom:16px">';
+    html += '<div style="font-size:28px;margin-bottom:8px">&#127942;</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:var(--accent)">' + r.players[winnerId].name + ' Wins!</div></div>';
+    return html;
+  }
+
+  // Current challenge
+  if (!r.currentChallenge) {
+    // Shooter picks challenge type
+    html += '<div class="card"><div class="card-title" style="font-size:14px">' + r.players[r.shooterIdx].name + ' &mdash; Set the Challenge</div>';
+    html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
+    html += '<button class="btn btn-sm ' + (r.challengeType !== 'freestyle' ? 'btn-primary' : 'btn-secondary') + '" onclick="setHorseChallengeType(\'standard\')">&#9971; Standard</button>';
+    html += '<button class="btn btn-sm ' + (r.challengeType === 'freestyle' ? 'btn-primary' : 'btn-secondary') + '" onclick="setHorseChallengeType(\'freestyle\')">&#127919; Freestyle</button>';
+    html += '</div>';
+    if (r.challengeType === 'freestyle') {
+      html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Putt from anywhere &mdash; no specific hole called. Just score everyone.</div>';
+      html += '<button class="btn btn-primary" onclick="setHorseChallenge(-1)">Start Challenge</button>';
+    } else {
+      html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Choose a tee/flag combo:</div>';
+      html += '<div class="hole-grid" style="grid-template-columns:repeat(4,1fr)">';
+      for (var i = 0; i < ALL_HOLES.length; i++) {
+        var h = ALL_HOLES[i];
+        html += '<div class="hole-chip" onclick="setHorseChallenge(' + h.id + ')"><span class="tee-dot tee-' + h.color + '"></span><div class="hname">' + h.name + '</div><div class="hinfo">Par ' + h.par + '</div></div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  } else {
+    // Score the challenge
+    var ch = r.currentChallenge;
+    html += '<div class="card">';
+    html += '<div style="text-align:center;padding:12px;background:rgba(20,45,25,0.6);border-radius:8px;margin-bottom:12px">';
+    if (ch.nondescript) {
+      html += '<span style="font-size:18px;font-weight:700;color:var(--primary)">&#127919; Freestyle</span>';
+      html += '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Putt from anywhere</div>';
+    } else {
+      html += '<span class="tee-dot tee-' + ch.hole.color + '" style="width:20px;height:20px"></span> ';
+      html += '<span style="font-size:18px;font-weight:700;color:var(--primary)">' + ch.hole.fullName + '</span>';
+      html += '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Par ' + ch.hole.par + '</div>';
+    }
+    html += '</div>';
+
+    // Score entry for each active player
+    for (var pi = 0; pi < r.players.length; pi++) {
+      if (r.eliminated[pi]) continue;
+      var score = ch.scores[pi];
+      var isShooter = pi === r.shooterIdx;
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:6px;background:rgba(20,45,25,0.3);border-radius:8px">';
+      html += '<div style="font-weight:600;width:60px;font-size:13px">' + r.players[pi].name + (isShooter ? ' &#127919;' : '') + '</div>';
+      html += '<div style="display:flex;gap:3px">';
+      for (var s = 1; s <= 6; s++) {
+        var active = score === s;
+        var btnBg = active ? 'var(--primary)' : 'rgba(20,45,25,0.6)';
+        var btnColor = active ? '#0f1f14' : 'var(--text-muted)';
+        html += '<button onclick="setHorseScore(' + pi + ',' + s + ')" style="width:34px;height:34px;border-radius:50%;border:1.5px solid ' + (active ? 'var(--primary)' : 'rgba(74,222,128,0.15)') + ';background:' + btnBg + ';color:' + btnColor + ';font-weight:700;font-size:14px;cursor:pointer">' + s + '</button>';
+      }
+      html += '</div>';
+      if (score !== null && score !== undefined) html += '<span style="font-family:var(--font-mono);font-weight:700;color:var(--primary);width:20px;text-align:center">' + score + '</span>';
+      html += '</div>';
+    }
+    
+    // Resolve button
+    var allScored = true;
+    for (var pi = 0; pi < r.players.length; pi++) { if (!r.eliminated[pi] && (ch.scores[pi] === null || ch.scores[pi] === undefined)) allScored = false; }
+    if (allScored) {
+      html += '<button class="btn btn-primary" style="width:100%;margin-top:12px;justify-content:center" onclick="resolveHorseChallenge()">&#10140; Resolve Challenge</button>';
+    }
+    html += '</div>';
+  }
+
+  return html;
+}
+
+function setHorseChallengeType(type) {
+  state.currentRound.challengeType = type;
+  renderPlayPage();
+}
+
+function setHorseChallenge(holeId) {
+  var r = state.currentRound;
+  var scores = [];
+  for (var i = 0; i < r.players.length; i++) scores.push(null);
+  if (holeId === -1) {
+    r.currentChallenge = { hole: { name: 'ND', fullName: 'Non-descript', color: 'Green', par: null, id: -1 }, scores: scores, nondescript: true };
+  } else {
+    r.currentChallenge = { hole: ALL_HOLES[holeId], scores: scores, nondescript: false };
+  }
+  renderPlayPage();
+}
+
+function setHorseScore(pi, val) {
+  var r = state.currentRound;
+  if (r.currentChallenge.scores[pi] === val) r.currentChallenge.scores[pi] = null;
+  else r.currentChallenge.scores[pi] = val;
+  renderPlayPage();
+}
+
+function resolveHorseChallenge() {
+  var r = state.currentRound;
+  var ch = r.currentChallenge;
+  var shooterScore = ch.scores[r.shooterIdx];
+  
+  // Everyone who scored worse than shooter gets a letter
+  for (var pi = 0; pi < r.players.length; pi++) {
+    if (pi === r.shooterIdx || r.eliminated[pi]) continue;
+    if (ch.scores[pi] > shooterScore) {
+      r.letters[pi]++;
+      if (r.letters[pi] >= r.horseWord.length) r.eliminated[pi] = true;
+    }
+  }
+  
+  // Check if anyone matched or beat the shooter
+  var shooterMatched = false;
+  for (var pi = 0; pi < r.players.length; pi++) {
+    if (pi === r.shooterIdx || r.eliminated[pi]) continue;
+    if (ch.scores[pi] <= shooterScore) { shooterMatched = true; break; }
+  }
+  
+  // Rotate shooter if someone matched, otherwise shooter keeps going
+  if (shooterMatched) {
+    var next = r.shooterIdx;
+    do { next = (next + 1) % r.players.length; } while (r.eliminated[next] && next !== r.shooterIdx);
+    r.shooterIdx = next;
+  }
+  
+  r.challenges.push(ch);
+  r.currentChallenge = null;
+  renderPlayPage();
+}
+
+function finishHorse() {
+  state.currentRound = null;
+  document.getElementById('main-nav').style.display = '';
+  document.querySelector('.app-header').style.display = '';
+  document.querySelector('.container').style.padding = '';
+  document.querySelector('.container').style.maxWidth = '';
+  showPage('play');
+}
+
+// ===================== FREESTYLE MODE =====================
+function startFreestyleRound() {
+  var checks = document.querySelectorAll('.play-player-cb:checked');
+  var playerIds = [];
+  for (var c = 0; c < checks.length; c++) playerIds.push(parseInt(checks[c].value));
+  if (playerIds.length === 0) return;
+  var players = state.players.filter(function(p) { return playerIds.indexOf(p.id) >= 0; });
+  
+  state.currentRound = {
+    gameMode: 'freestyle',
+    players: players,
+    putts: [],
+    useHandicap: false,
+    courseId: -1,
+    courseName: 'Freestyle'
+  };
+  renderPlayPage();
+}
+
+function renderFreestyleMode() {
+  var r = state.currentRound;
+  
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px">';
+  html += '<button class="btn btn-sm btn-secondary" onclick="exitScorecardMode()">&larr; Menu</button>';
+  html += '<div style="text-align:center;flex:1"><div style="font-family:var(--font-sans);font-weight:700;font-size:16px;color:var(--primary)">&#127919; Freestyle</div></div>';
+  html += '<button class="btn btn-sm btn-gold" onclick="finishFreestyle()">&#9989; Done</button></div>';
+
+  // Running totals
+  html += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">';
+  for (var pi = 0; pi < r.players.length; pi++) {
+    var total = 0;
+    for (var i = 0; i < r.putts.length; i++) { if (r.putts[i].scores[pi] !== null) total += r.putts[i].scores[pi]; }
+    html += '<div style="flex:1;min-width:80px;text-align:center;padding:12px 8px;background:rgba(20,45,25,0.4);border-radius:8px;border:1px solid rgba(74,222,128,0.08)">';
+    html += '<div style="font-size:11px;color:var(--text-muted)">' + r.players[pi].name + '</div>';
+    html += '<div style="font-size:22px;font-weight:700;font-family:var(--font-mono);color:var(--primary)">' + (total || 0) + '</div></div>';
+  }
+  html += '</div>';
+
+  // Current putt entry
+  html += '<div class="card"><div class="card-title" style="font-size:14px">Putt #' + (r.putts.length + 1) + '</div>';
+  
+  // Initialize current putt if not exists
+  if (!r.currentPutt) r.currentPutt = r.players.map(function() { return null; });
+  
+  for (var pi = 0; pi < r.players.length; pi++) {
+    var score = r.currentPutt[pi];
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:6px;background:rgba(20,45,25,0.3);border-radius:8px">';
+    html += '<div style="font-weight:600;width:60px;font-size:13px">' + r.players[pi].name + '</div>';
+    html += '<div style="display:flex;gap:3px">';
+    for (var s = 1; s <= 6; s++) {
+      var active = score === s;
+      var btnBg = active ? 'var(--primary)' : 'rgba(20,45,25,0.6)';
+      var btnColor = active ? '#0f1f14' : 'var(--text-muted)';
+      html += '<button onclick="setFreestyleScore(' + pi + ',' + s + ')" style="width:34px;height:34px;border-radius:50%;border:1.5px solid ' + (active ? 'var(--primary)' : 'rgba(74,222,128,0.15)') + ';background:' + btnBg + ';color:' + btnColor + ';font-weight:700;font-size:14px;cursor:pointer">' + s + '</button>';
+    }
+    html += '</div></div>';
+  }
+  
+  html += '<button class="btn btn-primary" style="width:100%;margin-top:10px;justify-content:center" onclick="recordFreestylePutt()">&#10140; Record Putt</button>';
+  html += '</div>';
+
+  // History
+  if (r.putts.length > 0) {
+    html += '<div class="card"><div class="card-title" style="font-size:14px">&#128203; Putts</div>';
+    html += '<table class="history-table"><thead><tr><th>#</th>';
+    for (var pi = 0; pi < r.players.length; pi++) html += '<th>' + r.players[pi].name + '</th>';
+    html += '</tr></thead><tbody>';
+    for (var i = r.putts.length - 1; i >= 0; i--) {
+      html += '<tr><td>' + (i + 1) + '</td>';
+      for (var pi = 0; pi < r.players.length; pi++) {
+        var s = r.putts[i].scores[pi];
+        html += '<td style="font-family:var(--font-mono);font-weight:600">' + (s !== null ? s : '-') + '</td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+  }
+
+  return html;
+}
+
+function setFreestyleScore(pi, val) {
+  var r = state.currentRound;
+  if (!r.currentPutt) r.currentPutt = r.players.map(function() { return null; });
+  r.currentPutt[pi] = r.currentPutt[pi] === val ? null : val;
+  renderPlayPage();
+}
+
+function recordFreestylePutt() {
+  var r = state.currentRound;
+  if (!r.currentPutt) return;
+  r.putts.push({ scores: r.currentPutt.slice() });
+  r.currentPutt = r.players.map(function() { return null; });
+  renderPlayPage();
+}
+
+function finishFreestyle() {
+  state.currentRound = null;
+  document.getElementById('main-nav').style.display = '';
+  document.querySelector('.app-header').style.display = '';
+  document.querySelector('.container').style.padding = '';
+  document.querySelector('.container').style.maxWidth = '';
+  showPage('play');
+}
+
+// ===================== PICK AS YOU GO MODE =====================
+function startPickAsYouGoRound() {
+  var checks = document.querySelectorAll('.play-player-cb:checked');
+  var playerIds = [];
+  for (var c = 0; c < checks.length; c++) playerIds.push(parseInt(checks[c].value));
+  if (playerIds.length === 0) return;
+  var players = state.players.filter(function(p) { return playerIds.indexOf(p.id) >= 0; });
+  
+  state.currentRound = {
+    gameMode: state.gameMode,
+    players: players,
+    holes: [],
+    scores: players.map(function() { return []; }),
+    useHandicap: state.useHandicap,
+    pickAsYouGo: true,
+    courseId: -1,
+    courseName: 'Pick as You Go',
+    currentHole: 0,
+    currentPick: null,
+    currentScores: null
+  };
+  renderPlayPage();
+}
+
+function renderPickAsYouGo() {
+  var r = state.currentRound;
+  
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px">';
+  html += '<button class="btn btn-sm btn-secondary" onclick="exitScorecardMode()">&larr; Menu</button>';
+  html += '<div style="text-align:center;flex:1"><div style="font-family:var(--font-sans);font-weight:700;font-size:16px;color:var(--primary)">' + (r.gameMode === 'match' ? '&#9876;&#65039; Match' : '&#9971; Stroke') + ' &mdash; Pick as You Go</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted)">Hole ' + (r.holes.length + 1) + '</div></div>';
+  html += '<button class="btn btn-sm btn-gold" onclick="finishPickAsYouGo()">&#9989; Done</button></div>';
+
+  // Running totals
+  var coursePar = 0;
+  for (var h = 0; h < r.holes.length; h++) coursePar += r.holes[h].par;
+  html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">';
+  for (var pi = 0; pi < r.players.length; pi++) {
+    var total = 0;
+    for (var i = 0; i < r.scores[pi].length; i++) total += (r.scores[pi][i] || 0);
+    var diff = total > 0 ? total - coursePar : 0;
+    var diffStr = total > 0 ? (diff > 0 ? '+' + diff : diff === 0 ? 'E' : '' + diff) : '-';
+    html += '<div style="flex:1;min-width:70px;text-align:center;padding:10px 6px;background:rgba(20,45,25,0.4);border-radius:8px;border:1px solid rgba(74,222,128,0.08)">';
+    html += '<div style="font-size:11px;color:var(--text-muted)">' + r.players[pi].name + '</div>';
+    html += '<div style="font-size:18px;font-weight:700;font-family:var(--font-mono);color:var(--primary)">' + (total || 0) + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted)">' + diffStr + '</div></div>';
+  }
+  html += '</div>';
+
+  // Pick hole or score
+  if (!r.currentPick) {
+    html += '<div class="card"><div class="card-title" style="font-size:14px">Pick Hole #' + (r.holes.length + 1) + '</div>';
+    html += '<div class="hole-grid" style="grid-template-columns:repeat(4,1fr)">';
+    for (var i = 0; i < ALL_HOLES.length; i++) {
+      var h = ALL_HOLES[i];
+      html += '<div class="hole-chip" onclick="pickHoleOnFly(' + h.id + ')"><span class="tee-dot tee-' + h.color + '"></span><div class="hname">' + h.name + '</div><div class="hinfo">Par ' + h.par + '</div></div>';
+    }
+    html += '</div></div>';
+  } else {
+    // Score this hole
+    var hole = r.currentPick;
+    html += '<div class="card">';
+    html += '<div style="text-align:center;padding:12px;background:rgba(20,45,25,0.6);border-radius:8px;margin-bottom:12px">';
+    html += '<span class="tee-dot tee-' + hole.color + '" style="width:20px;height:20px"></span> ';
+    html += '<span style="font-size:18px;font-weight:700;color:var(--primary)">' + hole.fullName + '</span>';
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Par ' + hole.par + '</div></div>';
+
+    if (!r.currentScores) r.currentScores = r.players.map(function() { return null; });
+    for (var pi = 0; pi < r.players.length; pi++) {
+      var score = r.currentScores[pi];
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:6px;background:rgba(20,45,25,0.3);border-radius:8px">';
+      html += '<div style="font-weight:600;width:60px;font-size:13px">' + r.players[pi].name + '</div>';
+      html += '<div style="display:flex;gap:3px">';
+      for (var s = 1; s <= 6; s++) {
+        var active = score === s;
+        var btnBg = active ? 'var(--primary)' : 'rgba(20,45,25,0.6)';
+        var btnColor = active ? '#0f1f14' : 'var(--text-muted)';
+        html += '<button onclick="setPickScore(' + pi + ',' + s + ')" style="width:34px;height:34px;border-radius:50%;border:1.5px solid ' + (active ? 'var(--primary)' : 'rgba(74,222,128,0.15)') + ';background:' + btnBg + ';color:' + btnColor + ';font-weight:700;font-size:14px;cursor:pointer">' + s + '</button>';
+      }
+      html += '</div></div>';
+    }
+    html += '<button class="btn btn-primary" style="width:100%;margin-top:10px;justify-content:center" onclick="recordPickHole()">&#10140; Next Hole</button>';
+    html += '</div>';
+  }
+
+  return html;
+}
+
+function pickHoleOnFly(holeId) {
+  state.currentRound.currentPick = ALL_HOLES[holeId];
+  state.currentRound.currentScores = state.currentRound.players.map(function() { return null; });
+  renderPlayPage();
+}
+
+function setPickScore(pi, val) {
+  var r = state.currentRound;
+  r.currentScores[pi] = r.currentScores[pi] === val ? null : val;
+  renderPlayPage();
+}
+
+function recordPickHole() {
+  var r = state.currentRound;
+  r.holes.push(r.currentPick);
+  for (var pi = 0; pi < r.players.length; pi++) r.scores[pi].push(r.currentScores[pi]);
+  r.currentPick = null;
+  r.currentScores = null;
+  renderPlayPage();
+}
+
+function finishPickAsYouGo() {
+  // Save as a round (create a temp course)
+  var r = state.currentRound;
+  if (r.holes.length > 0) {
+    var holeIds = r.holes.map(function(h) { return h.id; });
+    var totalPar = 0, totalDiff = 0;
+    for (var i = 0; i < holeIds.length; i++) { totalPar += ALL_HOLES[holeIds[i]].par; totalDiff += ALL_HOLES[holeIds[i]].difficulty; }
+    var saveCourse = false;
+    var courseName = 'Course (' + r.holes.length + ' holes)';
+    try { saveCourse = window.confirm('Save this layout as a reusable course?'); } catch(e) {}
+    if (saveCourse) {
+      try { var input = window.prompt('Course name:'); if (input) courseName = input; } catch(e) {}
+    }
+    var course = { id: Date.now(), name: courseName, holeIds: holeIds, totalPar: totalPar, avgDifficulty: totalDiff / holeIds.length };
+    if (saveCourse) state.courses.push(course);
+    
+    var results = [];
+    for (var pi = 0; pi < r.players.length; pi++) {
+      var total = 0;
+      for (var s = 0; s < r.scores[pi].length; s++) total += (r.scores[pi][s] || 0);
+      results.push({ playerId: r.players[pi].id, playerName: r.players[pi].name, scores: r.scores[pi].slice(), total: total });
+    }
+    state.rounds.push({ id: Date.now(), courseId: course.id, courseName: course.name, coursePar: totalPar, courseDifficulty: course.avgDifficulty, date: new Date().toISOString(), results: results });
+    recalcHandicaps();
+    saveState();
+  }
+  state.currentRound = null;
+  document.getElementById('main-nav').style.display = '';
+  document.querySelector('.app-header').style.display = '';
+  document.querySelector('.container').style.padding = '';
+  document.querySelector('.container').style.maxWidth = '';
+  showPage('history');
+}
+
+function finishRound() {
+  var r = state.currentRound;
+  var course = null;
+  if (r.courseId === -1) {
+    // Temp course from random selection - save it automatically
+    var holeIds = r.holes.map(function(h) { return h.id; });
+    var totalPar = 0, totalDiff = 0;
+    for (var i = 0; i < holeIds.length; i++) { totalPar += ALL_HOLES[holeIds[i]].par; totalDiff += ALL_HOLES[holeIds[i]].difficulty; }
+    course = { id: Date.now(), name: r.courseName, holeIds: holeIds, totalPar: totalPar, avgDifficulty: totalDiff / holeIds.length };
+    state.courses.push(course);
+    r.courseId = course.id;
+  } else {
+    for (var i = 0; i < state.courses.length; i++) { if (state.courses[i].id === r.courseId) { course = state.courses[i]; break; } }
+  }
+  if (!course) return;
+  var results = [];
+  for (var pi = 0; pi < r.players.length; pi++) {
+    var total = 0;
+    for (var s = 0; s < r.scores[pi].length; s++) total += (r.scores[pi][s] || 0);
+    results.push({ playerId: r.players[pi].id, playerName: r.players[pi].name, scores: r.scores[pi].slice(), total: total });
+  }
+  state.rounds.push({ id: Date.now(), courseId: r.courseId, courseName: r.courseName, coursePar: course.totalPar, courseDifficulty: course.avgDifficulty, date: new Date().toISOString(), results: results });
+  recalcHandicaps();
+  state.currentRound = null;
+  saveState();
+  document.getElementById('main-nav').style.display = '';
+  document.querySelector('.app-header').style.display = '';
+  document.querySelector('.container').style.padding = '';
+  document.querySelector('.container').style.maxWidth = '';
+  showPage('history');
+}
+
+// ===================== HANDICAP =====================
+function recalcHandicaps() {
+  for (var pi = 0; pi < state.players.length; pi++) {
+    var player = state.players[pi];
+    var diffs = [];
+    for (var ri = state.rounds.length - 1; ri >= Math.max(0, state.rounds.length - 10); ri--) {
+      var round = state.rounds[ri];
+      for (var rr = 0; rr < round.results.length; rr++) {
+        if (round.results[rr].playerId === player.id) {
+          var course = null;
+          for (var ci = 0; ci < state.courses.length; ci++) { if (state.courses[ci].id === round.courseId) { course = state.courses[ci]; break; } }
+          var factor = course ? (course.avgDifficulty <= 2 ? 0.8 : course.avgDifficulty <= 3.5 ? 1.0 : 1.2) : 1.0;
+          diffs.push((round.results[rr].total - round.coursePar) * factor);
+          break;
+        }
+      }
+    }
+    if (diffs.length >= 3) {
+      diffs.sort(function(a, b) { return a - b; });
+      player.handicap = Math.round(((diffs[0] + diffs[1] + diffs[2]) / 3) * 10) / 10;
+    } else { player.handicap = null; }
+  }
+}
+
+// ===================== PLAYERS =====================
+function renderPlayersPage() {
+  var html = '<div class="card"><div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg> Golfers</div>';
+  html += '<div class="card-subtitle">Tap a golfer for full stats and badges.<br><span style="color:var(--warning);font-size:11px">&#9888; Prototype: Data resets if the page reloads. In the real app, all data persists via SQLite.</span></div>';
+  html += '<div class="flex gap-8 mb-16"><input class="input" id="new-player" placeholder="Add a golfer..." style="flex:1;font-size:16px" inputmode="text" enterkeyhint="done" autocomplete="off" autocorrect="off">';
+  html += '<button class="btn btn-primary" onclick="addPlayer()">+ Add</button></div>';
+  html += '<div class="mb-12"><input class="input" id="player-search" placeholder="&#128269; Search golfers..." oninput="filterPlayers(this.value)" style="font-size:16px" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off"></div>';
+
+  // Sort players by most recent round (active players first)
+  var sortedPlayers = state.players.slice().sort(function(a, b) {
+    var aLast = 0, bLast = 0;
+    for (var ri = 0; ri < state.rounds.length; ri++) {
+      for (var rr = 0; rr < state.rounds[ri].results.length; rr++) {
+        if (state.rounds[ri].results[rr].playerId === a.id) aLast = Math.max(aLast, state.rounds[ri].id);
+        if (state.rounds[ri].results[rr].playerId === b.id) bLast = Math.max(bLast, state.rounds[ri].id);
+      }
+    }
+    return bLast - aLast;
+  });
+
+  // Limit to 8 unless searching
+  var searchVal = (document.getElementById('player-search') && document.getElementById('player-search').value) || '';
+  var showAll = state._showAllGolfers || searchVal.length > 0;
+  var displayPlayers = showAll ? sortedPlayers : sortedPlayers.slice(0, 8);
+  var hiddenCount = sortedPlayers.length - 8;
+
+  for (var i = 0; i < displayPlayers.length; i++) {
+    var p = displayPlayers[i];
+    var stats = getPlayerStats(p.id);
+    var rc = stats.roundsPlayed;
+    // Count badges
+    var badgeCount = 0;
+    for (var ai = 0; ai < ACHIEVEMENTS.length; ai++) { if (ACHIEVEMENTS[ai].check(stats)) badgeCount++; }
+    // Win count
+    var wins = 0;
+    for (var ri = 0; ri < state.rounds.length; ri++) {
+      var round = state.rounds[ri];
+      var myResult = null; var isBest = true;
+      for (var rr = 0; rr < round.results.length; rr++) {
+        if (round.results[rr].playerId === p.id) myResult = round.results[rr];
+      }
+      if (myResult) {
+        for (var rr = 0; rr < round.results.length; rr++) {
+          if (round.results[rr].playerId !== p.id && round.results[rr].total < myResult.total) { isBest = false; break; }
+        }
+        if (isBest) wins++;
+      }
+    }
+    var winPct = rc > 0 ? Math.round((wins / rc) * 100) : 0;
+
+    html += '<div class="player-row" style="cursor:pointer;flex-wrap:wrap" onclick="showPlayerDetail(' + p.id + ')">';
+    html += '<div class="player-avatar">' + p.name[0].toUpperCase() + '</div>';
+    html += '<div style="flex:1;min-width:120px"><div style="font-weight:600;font-size:15px">' + p.name + (p.lastName ? ' ' + p.lastName : '') + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted)">' + rc + ' rounds &middot; ' + wins + ' wins (' + winPct + '%) &middot; ' + badgeCount + ' badges</div></div>';
+    html += '<div style="text-align:right"><div style="font-family:var(--font-mono);font-weight:700;color:var(--primary);font-size:14px">' + (p.handicap !== null ? 'HC ' + p.handicap : '--') + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted)">Handicap</div></div>';
+    html += '</div>';
+  }
+  if (!showAll && hiddenCount > 0) {
+    html += '<div style="text-align:center;padding:12px"><button class="btn btn-sm btn-secondary" onclick="state._showAllGolfers=true;renderPlayersPage()">Show all ' + sortedPlayers.length + ' golfers</button></div>';
+  }
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg> Handicap System</div>';
+  html += '<div style="font-size:13px;color:var(--text-secondary);line-height:1.8">';
+  html += '<p><strong style="color:var(--text)">Differential</strong> = (Score &minus; Par) &times; Course Factor</p>';
+  html += '<p><strong style="color:var(--text)">Course Factor:</strong> Easy = 0.85 &middot; Medium = 1.0 &middot; Hard = 1.15</p>';
+  html += '<p><strong style="color:var(--text)">Handicap</strong> = Avg of best 8 differentials from last 20 rounds</p>';
+  html += '<p><strong style="color:var(--text)">Net Score</strong> = Gross &minus; Handicap (toggle on/off per round)</p>';
+  html += '<p style="color:var(--text-muted);margin-top:8px;font-size:12px">Minimum 3 rounds required to establish handicap.</p></div></div>';
+  // Data Management section
+  html += '<div class="card"><div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Data Management</div>';
+  html += '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Export your data to back it up or share with the developer. Import to restore from a backup.</div>';
+  html += '<div class="flex gap-8" style="flex-wrap:wrap">';
+  html += '<button class="btn btn-primary" onclick="exportData()" style="flex:1;min-width:120px">&#128229; Export Data</button>';
+  html += '<button class="btn" onclick="importDataPrompt()" style="flex:1;min-width:120px;border-color:var(--primary);color:var(--primary)">&#128228; Import Data</button>';
+  html += '</div>';
+  html += '<textarea id="data-io-area" style="display:none;width:100%;height:200px;margin-top:12px;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:var(--font-mono);font-size:11px;resize:vertical" placeholder="Paste exported data here..."></textarea>';
+  html += '</div>';
+  document.getElementById('page-players').innerHTML = html;
+}
+
+function addPlayer() { var input = document.getElementById('new-player'); if (!input || !input.value.trim()) return; state.players.push({ id: Date.now(), name: input.value.trim(), handicap: null }); saveState(); renderPlayersPage(); }
+function deletePlayer(id) { state.players = state.players.filter(function(p) { return p.id !== id; }); saveState(); renderPlayersPage(); }
+
+function exportData() {
+  var data = {
+    version: 1,
+    exportDate: new Date().toISOString(),
+    players: state.players,
+    courses: state.courses,
+    rounds: state.rounds,
+    courseSize: state.courseSize
+  };
+  var json = JSON.stringify(data, null, 2);
+  var ta = document.getElementById('data-io-area');
+  if (ta) {
+    ta.style.display = 'block';
+    ta.value = json;
+    ta.select();
+    try { document.execCommand('copy'); showToast('Data copied to clipboard!'); } catch(e) { showToast('Data exported below — copy it manually.'); }
+  }
+}
+
+function importDataPrompt() {
+  var ta = document.getElementById('data-io-area');
+  if (ta) {
+    ta.style.display = 'block';
+    ta.value = '';
+    ta.placeholder = 'Paste exported JSON data here, then click Import below...';
+    ta.focus();
+    // Add import button if not already there
+    if (!document.getElementById('import-confirm-btn')) {
+      var btn = document.createElement('button');
+      btn.id = 'import-confirm-btn';
+      btn.className = 'btn btn-primary';
+      btn.style.cssText = 'margin-top:8px;width:100%';
+      btn.textContent = '\u2705 Import & Replace Data';
+      btn.onclick = function() { doImport(); };
+      ta.parentNode.insertBefore(btn, ta.nextSibling);
+    }
+  }
+}
+
+function doImport() {
+  var ta = document.getElementById('data-io-area');
+  if (!ta || !ta.value.trim()) { showToast('Nothing to import.'); return; }
+  try {
+    var data = JSON.parse(ta.value.trim());
+    if (!data.players || !data.courses) { showToast('Invalid data format.'); return; }
+    if (!confirm('This will REPLACE all current players, courses, and rounds. Continue?')) return;
+    state.players = data.players;
+    state.courses = data.courses;
+    state.rounds = data.rounds || [];
+    if (data.courseSize) state.courseSize = data.courseSize;
+    saveState();
+    showToast('Data imported successfully!');
+    ta.style.display = 'none';
+    var btn = document.getElementById('import-confirm-btn');
+    if (btn) btn.remove();
+    renderPlayersPage();
+  } catch(e) {
+    showToast('Error: Invalid JSON. Check the pasted data.');
+  }
+}
+
+function showToast(msg) {
+  var existing = document.querySelector('.toast-msg');
+  if (existing) existing.remove();
+  var t = document.createElement('div');
+  t.className = 'toast-msg';
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface-2);color:var(--text);padding:12px 24px;border-radius:12px;font-size:13px;z-index:9999;border:1px solid var(--primary);box-shadow:0 4px 20px rgba(0,0,0,0.5);animation:fadeInUp 0.3s';
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 3000);
+}
+
+
+// ===================== HISTORY =====================
+function renderHistoryPage() {
+  var html = '';
+
+  if (state.rounds.length === 0) {
+    html += '<div class="card"><div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg> History</div>';
+    html += '<div class="empty-state"><div class="emoji">&#9971;</div><p>No rounds completed yet. Hit the course!</p></div></div>';
+    document.getElementById('page-history').innerHTML = html;
+    return;
+  }
+
+  html += '<div class="card"><div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg> History</div>';
+
+  // --- ALL-TIME BEST (GHIN-style Handicap Index) ---
+  html += '<label class="label" style="margin-bottom:6px">&#127942; All-Time Best (Handicap Index)</label>';
+  html += '<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px">GHIN-style: best 8 of last 20 differentials, adjusted for course difficulty. Lower is better.</div>';
+
+  // Calculate handicap index per player
+  var golferDiffs = {};
+  for (var ri = 0; ri < state.rounds.length; ri++) {
+    var round = state.rounds[ri];
+    // Difficulty factor like slope adjustment
+    var diffFactor = 1.0;
+    if (round.courseDifficulty) {
+      if (round.courseDifficulty <= 2) diffFactor = 0.85;
+      else if (round.courseDifficulty <= 3.5) diffFactor = 1.0;
+      else diffFactor = 1.15;
+    }
+    for (var rr = 0; rr < round.results.length; rr++) {
+      var res = round.results[rr];
+      if (!golferDiffs[res.playerId]) golferDiffs[res.playerId] = { name: res.playerName, id: res.playerId, diffs: [] };
+      var differential = (res.total - round.coursePar) * diffFactor;
+      golferDiffs[res.playerId].diffs.push(differential);
+    }
+  }
+
+  var golferRank = [];
+  var gKeys = Object.keys(golferDiffs);
+  for (var gi = 0; gi < gKeys.length; gi++) {
+    var g = golferDiffs[gKeys[gi]];
+    // Take last 20 differentials
+    var recent = g.diffs.slice(-20);
+    // Sort ascending, take best 8 (or fewer if < 8 rounds)
+    var sorted = recent.slice().sort(function(a, b) { return a - b; });
+    var bestN = Math.min(8, sorted.length);
+    var bestDiffs = sorted.slice(0, bestN);
+    var handicapIdx = bestDiffs.reduce(function(a, b) { return a + b; }, 0) / bestDiffs.length;
+    golferRank.push({ name: g.name, id: gKeys[gi], handicapIdx: handicapIdx, rounds: g.diffs.length, bestN: bestN });
+  }
+  golferRank.sort(function(a, b) { return a.handicapIdx - b.handicapIdx; });
+
+  var medals = ['&#129351;', '&#129352;', '&#129353;'];
+  for (var li = 0; li < golferRank.length; li++) {
+    var g = golferRank[li];
+    var medal = li < 3 ? medals[li] : (li + 1) + '.';
+    var idxStr = g.handicapIdx >= 0 ? '+' + g.handicapIdx.toFixed(1) : g.handicapIdx.toFixed(1);
+    html += '<div class="leaderboard-row"><div class="lb-rank">' + medal + '</div>';
+    html += '<div class="lb-name" style="cursor:pointer" onclick="showPlayerDetail(' + g.id + ')">' + g.name + ' <span style="font-size:11px;color:var(--text-muted)">(' + g.rounds + ' rds, best ' + g.bestN + ')</span></div>';
+    html += '<div class="lb-score">' + idxStr + '</div></div>';
+  }
+
+  // --- ALL-TIME TOP SINGLE ROUNDS ---
+  html += '<label class="label" style="margin-top:20px;margin-bottom:6px">&#11088; Top Single Rounds</label>';
+  html += '<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px">Best individual rounds. Gross = raw vs par. Net = adjusted for course difficulty.</div>';
+  var allScores = [];
+  for (var ri = 0; ri < state.rounds.length; ri++) {
+    var round = state.rounds[ri];
+    var diffFactor = 1.0;
+    if (round.courseDifficulty) { diffFactor = round.courseDifficulty <= 2 ? 0.85 : round.courseDifficulty <= 3.5 ? 1.0 : 1.15; }
+    for (var rr = 0; rr < round.results.length; rr++) {
+      var res = round.results[rr];
+      var grossDiff = res.total - round.coursePar;
+      var netDiff = grossDiff * diffFactor;
+      allScores.push({ name: res.playerName, playerId: res.playerId, total: res.total, coursePar: round.coursePar, courseName: round.courseName, courseId: round.courseId, grossDiff: grossDiff, netDiff: netDiff, date: round.date });
+    }
+  }
+  allScores.sort(function(a, b) { return a.netDiff - b.netDiff; });
+  var topN = Math.min(5, allScores.length);
+  html += '<table class="history-table"><thead><tr><th>#</th><th>Player</th><th>Score</th><th>Gross</th><th>Net</th><th>Course</th></tr></thead><tbody>';
+  for (var ti = 0; ti < topN; ti++) {
+    var s = allScores[ti];
+    var grossStr = s.grossDiff > 0 ? '+' + s.grossDiff : s.grossDiff === 0 ? 'E' : '' + s.grossDiff;
+    var grossColor = s.grossDiff < 0 ? 'var(--primary)' : s.grossDiff > 0 ? 'var(--error)' : 'var(--text)';
+    var netRounded = Math.round(s.netDiff * 10) / 10;
+    var netStr = netRounded > 0 ? '+' + netRounded.toFixed(1) : netRounded === 0 ? 'E' : netRounded.toFixed(1);
+    var netColor = netRounded < 0 ? 'var(--primary)' : netRounded > 0 ? 'var(--error)' : 'var(--text)';
+    html += '<tr><td>' + (ti + 1) + '</td><td style="font-weight:600;cursor:pointer" onclick="showPlayerDetail(' + s.playerId + ')">' + s.name + '</td>';
+    html += '<td style="font-family:var(--font-mono);font-weight:700">' + s.total + '</td>';
+    html += '<td style="color:' + grossColor + ';font-family:var(--font-mono)">' + grossStr + '</td>';
+    html += '<td style="color:' + netColor + ';font-family:var(--font-mono);font-weight:700">' + netStr + '</td>';
+    var sCourseId = s.courseId || -1;
+    var courseClickable = sCourseId >= 0 ? ' style="font-size:11px;cursor:pointer;color:var(--text-secondary);text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3);text-underline-offset:2px" onclick="showCourseDetail(' + sCourseId + ')"' : ' style="font-size:11px;color:var(--text-muted)"';
+    html += '<td' + courseClickable + '>' + s.courseName + '</td></tr>';
+  }
+  html += '</tbody></table>';
+
+  // --- RECENT ROUNDS ---
+  html += '<label class="label" style="margin-top:20px;margin-bottom:6px">&#128203; Recent Rounds</label>';
+  html += '<div class="mb-12"><input class="input" placeholder="&#128269; Search rounds by player or course..." oninput="filterHistory(this.value)" style="font-size:13px"></div>';
+
+  for (var ri = state.rounds.length - 1; ri >= Math.max(0, state.rounds.length - 10); ri--) {
+    var round = state.rounds[ri];
+    var d = new Date(round.date);
+    var dateStr = (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear();
+    var playerNames = round.results.map(function(r) { return r.playerName; }).join(', ');
+    var winner = round.results[0];
+    for (var wr = 1; wr < round.results.length; wr++) { if (round.results[wr].total < winner.total) winner = round.results[wr]; }
+    var winDiff = winner.total - round.coursePar;
+    var winDiffStr = winDiff > 0 ? '+' + winDiff : winDiff === 0 ? 'E' : '' + winDiff;
+
+    html += '<div class="player-row" style="flex-wrap:wrap">';
+    html += '<div style="flex:1;min-width:150px">';
+    html += '<div style="font-weight:600;font-size:14px;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3);text-underline-offset:2px" onclick="showCourseDetail(' + round.courseId + ')">' + round.courseName + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + dateStr + ' &middot; ' + playerNames + '</div>';
+    html += '</div>';
+    html += '<div style="text-align:right">';
+    html += '<div style="font-weight:700;color:var(--primary);font-size:13px;cursor:pointer" onclick="showPlayerDetail(' + winner.playerId + ')">' + winner.playerName + ' &#127942;</div>';
+    html += '<div style="font-size:12px;font-family:var(--font-mono);color:var(--text-secondary);cursor:pointer;text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3);text-underline-offset:2px" onclick="showRoundScorecard(' + ri + ')">' + winner.total + ' (' + winDiffStr + ')</div>';
+    html += '</div>';
+    html += '<div style="width:100%;display:flex;justify-content:space-between;margin-top:6px;font-size:10px">';
+    html += '<span style="color:var(--text-muted);cursor:pointer" onclick="showRoundScorecard(' + ri + ')">&#128203; View Scorecard</span>';
+    html += '<span style="color:var(--primary);cursor:pointer" onclick="playRoundCourse(' + ri + ')">&#9971; Play Again &rarr;</span>';
+    html += '</div>';
+    html += '</div>';
+  }
+
+  html += '</div>';
+  document.getElementById('page-history').innerHTML = html;
+}
+
+function playRoundCourse(roundIdx) {
+  var round = state.rounds[roundIdx];
+  var course = null;
+  for (var ci = 0; ci < state.courses.length; ci++) {
+    if (state.courses[ci].id === round.courseId) { course = state.courses[ci]; break; }
+  }
+  if (course) {
+    state.selectedCourse = course;
+    showPage('play');
+  }
+}
+
+
+// ===================== ACHIEVEMENTS =====================
+function renderAchievementsPage() {
+  var html = '<div class="card"><div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg> Records</div>';
+  html += '<div class="card-subtitle">All-time top 5 in each category across all golfers.</div>';
+
+  if (state.rounds.length === 0) {
+    html += '<div class="empty-state"><div class="emoji">&#127942;</div><p>Play some rounds to start setting records!</p></div></div>';
+    document.getElementById('page-achievements').innerHTML = html;
+    return;
+  }
+
+  // Gather all data
+  var playerRoundData = [];
+  var playerAgg = {};
+  for (var ri = 0; ri < state.rounds.length; ri++) {
+    var round = state.rounds[ri];
+    var diffFactor = round.courseDifficulty ? (round.courseDifficulty <= 2 ? 0.85 : round.courseDifficulty <= 3.5 ? 1.0 : 1.15) : 1.0;
+    // Determine round winner
+    var winnerTotal = 999;
+    for (var rr = 0; rr < round.results.length; rr++) { if (round.results[rr].total < winnerTotal) winnerTotal = round.results[rr].total; }
+
+    for (var rr = 0; rr < round.results.length; rr++) {
+      var res = round.results[rr];
+      var grossDiff = res.total - round.coursePar;
+      var netDiff = grossDiff * diffFactor;
+      var isWinner = res.total === winnerTotal;
+
+      // Calculate birdie streak for this round
+      var course = null;
+      for (var ci = 0; ci < state.courses.length; ci++) { if (state.courses[ci].id === round.courseId) { course = state.courses[ci]; break; } }
+      var streak = 0, maxStreak = 0;
+      if (course) {
+        var holes = course.holeIds.map(function(id) { return ALL_HOLES[id]; });
+        for (var si = 0; si < res.scores.length; si++) {
+          if (res.scores[si] !== null && holes[si] && res.scores[si] <= holes[si].par) { streak++; if (streak > maxStreak) maxStreak = streak; }
+          else { streak = 0; }
+        }
+      }
+
+      playerRoundData.push({
+        playerId: res.playerId,
+        name: res.playerName,
+        total: res.total,
+        grossDiff: grossDiff,
+        netDiff: netDiff,
+        courseName: round.courseName,
+        courseId: round.courseId,
+        date: round.date,
+        streak: maxStreak,
+        isWinner: isWinner,
+        roundIdx: ri
+      });
+
+      if (!playerAgg[res.playerId]) playerAgg[res.playerId] = { name: res.playerName, id: res.playerId, rounds: 0, wins: 0, hios: 0 };
+      playerAgg[res.playerId].rounds++;
+      if (isWinner) playerAgg[res.playerId].wins++;
+      for (var si = 0; si < res.scores.length; si++) { if (res.scores[si] === 1 && holes[si] && holes[si].par >= 2) playerAgg[res.playerId].hios++; }
+    }
+  }
+
+  // --- LOWEST GROSS SCORE ---
+  html += '<label class="label" style="margin-bottom:6px">&#127942; Lowest Gross Score (vs Par)</label>';
+  var byGross = playerRoundData.slice().sort(function(a, b) { return a.grossDiff - b.grossDiff; });
+  html += '<table class="history-table" style="font-size:12px"><thead><tr><th>#</th><th>Golfer</th><th>Score</th><th>vs Par</th><th>Course</th></tr></thead><tbody>';
+  for (var i = 0; i < Math.min(5, byGross.length); i++) {
+    var r = byGross[i];
+    var gStr = r.grossDiff > 0 ? '+' + r.grossDiff : r.grossDiff === 0 ? 'E' : '' + r.grossDiff;
+    var gColor = r.grossDiff < 0 ? 'var(--primary)' : r.grossDiff > 0 ? 'var(--error)' : 'var(--text)';
+    html += '<tr><td>' + (i+1) + '</td><td style="cursor:pointer" onclick="showPlayerDetail(' + r.playerId + ')">' + r.name + '</td>';
+    html += '<td style="font-family:var(--font-mono);cursor:pointer" onclick="showRoundScorecard(' + r.roundIdx + ')">' + r.total + '</td>';
+    html += '<td style="color:' + gColor + ';font-family:var(--font-mono);font-weight:700">' + gStr + '</td>';
+    html += '<td style="font-size:11px;cursor:pointer;color:var(--text-secondary);text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3)" onclick="showCourseDetail(' + r.courseId + ')">' + r.courseName + '</td></tr>';
+  }
+  html += '</tbody></table>';
+
+  // --- LOWEST NET SCORE ---
+  html += '<label class="label" style="margin-top:20px;margin-bottom:6px">&#11088; Lowest Net Score (adjusted for difficulty)</label>';
+  var byNet = playerRoundData.slice().sort(function(a, b) { return a.netDiff - b.netDiff; });
+  html += '<table class="history-table" style="font-size:12px"><thead><tr><th>#</th><th>Golfer</th><th>Net</th><th>Course</th></tr></thead><tbody>';
+  for (var i = 0; i < Math.min(5, byNet.length); i++) {
+    var r = byNet[i];
+    var nRounded = Math.round(r.netDiff * 10) / 10;
+    var nStr = nRounded > 0 ? '+' + nRounded.toFixed(1) : nRounded === 0 ? 'E' : nRounded.toFixed(1);
+    var nColor = nRounded < 0 ? 'var(--primary)' : nRounded > 0 ? 'var(--error)' : 'var(--text)';
+    html += '<tr><td>' + (i+1) + '</td><td style="cursor:pointer" onclick="showPlayerDetail(' + r.playerId + ')">' + r.name + '</td>';
+    html += '<td style="color:' + nColor + ';font-family:var(--font-mono);font-weight:700;cursor:pointer" onclick="showRoundScorecard(' + r.roundIdx + ')">' + nStr + '</td>';
+    html += '<td style="font-size:11px;cursor:pointer;color:var(--text-secondary);text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3)" onclick="showCourseDetail(' + r.courseId + ')">' + r.courseName + '</td></tr>';
+  }
+  html += '</tbody></table>';
+
+  // --- BEST BIRDIE STREAK ---
+  html += '<label class="label" style="margin-top:20px;margin-bottom:6px">&#128293; Longest Birdie Streak (consecutive holes at/under par)</label>';
+  var byStreak = playerRoundData.filter(function(r) { return r.streak > 0; }).sort(function(a, b) { return b.streak - a.streak; });
+  html += '<table class="history-table" style="font-size:12px"><thead><tr><th>#</th><th>Golfer</th><th>Streak</th><th>Course</th></tr></thead><tbody>';
+  for (var i = 0; i < Math.min(5, byStreak.length); i++) {
+    var r = byStreak[i];
+    html += '<tr><td>' + (i+1) + '</td><td style="cursor:pointer" onclick="showPlayerDetail(' + r.playerId + ')">' + r.name + '</td>';
+    html += '<td style="font-family:var(--font-mono);font-weight:700;color:var(--primary)">' + r.streak + ' holes</td>';
+    html += '<td style="font-size:11px;cursor:pointer;color:var(--text-secondary);text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3)" onclick="showCourseDetail(' + r.courseId + ')">' + r.courseName + '</td></tr>';
+  }
+  html += '</tbody></table>';
+
+  // --- MOST ROUNDS PLAYED ---
+  html += '<label class="label" style="margin-top:20px;margin-bottom:6px">&#127947; Most Rounds Played</label>';
+  var aggArr = Object.keys(playerAgg).map(function(k) { return playerAgg[k]; });
+  var byRounds = aggArr.slice().sort(function(a, b) { return b.rounds - a.rounds; });
+  html += '<table class="history-table" style="font-size:12px"><thead><tr><th>#</th><th>Golfer</th><th>Rounds</th></tr></thead><tbody>';
+  for (var i = 0; i < Math.min(5, byRounds.length); i++) {
+    var r = byRounds[i];
+    html += '<tr><td>' + (i+1) + '</td><td style="cursor:pointer" onclick="showPlayerDetail(' + r.id + ')">' + r.name + '</td>';
+    html += '<td style="font-family:var(--font-mono);font-weight:700">' + r.rounds + '</td></tr>';
+  }
+  html += '</tbody></table>';
+
+  // --- BEST WIN % ---
+  html += '<label class="label" style="margin-top:20px;margin-bottom:6px">&#128170; Best Win Rate (min 3 rounds)</label>';
+  var byWinPct = aggArr.filter(function(a) { return a.rounds >= 3; }).map(function(a) { a.winPct = Math.round((a.wins / a.rounds) * 100); return a; }).sort(function(a, b) { return b.winPct - a.winPct; });
+  html += '<table class="history-table" style="font-size:12px"><thead><tr><th>#</th><th>Golfer</th><th>Win %</th><th>W / R</th></tr></thead><tbody>';
+  for (var i = 0; i < Math.min(5, byWinPct.length); i++) {
+    var r = byWinPct[i];
+    html += '<tr><td>' + (i+1) + '</td><td style="cursor:pointer" onclick="showPlayerDetail(' + r.id + ')">' + r.name + '</td>';
+    html += '<td style="font-family:var(--font-mono);font-weight:700;color:var(--primary)">' + r.winPct + '%</td>';
+    html += '<td style="font-size:11px;color:var(--text-muted)">' + r.wins + ' / ' + r.rounds + '</td></tr>';
+  }
+  html += '</tbody></table>';
+
+  // --- MOST HOLE IN ONES ---
+  html += '<label class="label" style="margin-top:20px;margin-bottom:6px">&#127775; Most Hole in Ones</label>';
+  var byHio = aggArr.filter(function(a) { return a.hios > 0; }).sort(function(a, b) { return b.hios - a.hios; });
+  if (byHio.length === 0) {
+    html += '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">No hole in ones yet!</div>';
+  } else {
+    html += '<table class="history-table" style="font-size:12px"><thead><tr><th>#</th><th>Golfer</th><th>HIOs</th></tr></thead><tbody>';
+    for (var i = 0; i < Math.min(5, byHio.length); i++) {
+      var r = byHio[i];
+      html += '<tr><td>' + (i+1) + '</td><td style="cursor:pointer" onclick="showPlayerDetail(' + r.id + ')">' + r.name + '</td>';
+      html += '<td style="font-family:var(--font-mono);font-weight:700;color:var(--accent)">' + r.hios + '</td></tr>';
+    }
+    html += '</tbody></table>';
+  }
+
+  html += '</div>';
+  document.getElementById('page-achievements').innerHTML = html;
+}
+
+// ===================== DETAIL VIEWS =====================
+function showOverlay(html) {
+  closeOverlay();
+  var overlay = document.createElement('div');
+  overlay.id = 'detail-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);overflow-y:auto';
+  overlay.innerHTML = '<div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.5)">' + html + '</div>';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeOverlay(); });
+  document.body.appendChild(overlay);
+}
+
+function closeOverlay() {
+  var el = document.getElementById('detail-overlay');
+  if (el) el.remove();
+}
+
+function showPlayerDetail(playerId) {
+  var player = null;
+  for (var i = 0; i < state.players.length; i++) { if (state.players[i].id == playerId) { player = state.players[i]; break; } }
+  if (!player) return;
+
+  // Gather stats
+  var rounds = [];
+  var courseCounts = {};
+  var wins = 0;
+  for (var ri = 0; ri < state.rounds.length; ri++) {
+    var round = state.rounds[ri];
+    var result = null;
+    for (var rr = 0; rr < round.results.length; rr++) { if (round.results[rr].playerId === playerId) { result = round.results[rr]; break; } }
+    if (!result) continue;
+    var diffFactor = round.courseDifficulty ? (round.courseDifficulty <= 2 ? 0.85 : round.courseDifficulty <= 3.5 ? 1.0 : 1.15) : 1.0;
+    var grossDiff = result.total - round.coursePar;
+    rounds.push({ total: result.total, coursePar: round.coursePar, grossDiff: grossDiff, netDiff: grossDiff * diffFactor, courseName: round.courseName, courseId: round.courseId, date: round.date });
+    if (!courseCounts[round.courseName]) courseCounts[round.courseName] = 0;
+    courseCounts[round.courseName]++;
+    // Check if winner
+    var isWinner = true;
+    for (var wr = 0; wr < round.results.length; wr++) { if (round.results[wr].playerId !== playerId && round.results[wr].total < result.total) { isWinner = false; break; } }
+    if (isWinner) wins++;
+  }
+
+  // GHIN handicap
+  var diffs = rounds.map(function(r) { return r.netDiff; }).slice(-20);
+  var sorted = diffs.slice().sort(function(a, b) { return a - b; });
+  var bestN = Math.min(8, sorted.length);
+  var handicapIdx = bestN > 0 ? sorted.slice(0, bestN).reduce(function(a, b) { return a + b; }, 0) / bestN : null;
+
+  // Favorite course
+  var favCourse = '';
+  var maxPlays = 0;
+  var cKeys = Object.keys(courseCounts);
+  for (var ck = 0; ck < cKeys.length; ck++) { if (courseCounts[cKeys[ck]] > maxPlays) { maxPlays = courseCounts[cKeys[ck]]; favCourse = cKeys[ck]; } }
+
+
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  html += '<div style="display:flex;align-items:center;gap:12px"><div class="player-avatar" style="width:44px;height:44px;font-size:20px">' + player.name[0].toUpperCase() + '</div>';
+  html += '<div><div style="font-size:20px;font-weight:700">' + player.name + (player.lastName ? ' ' + player.lastName : '') + '</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted)">' + rounds.length + ' rounds played</div></div></div>';
+  html += '<button onclick="closeOverlay()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer">&times;</button></div>';
+
+  // Stats grid
+  html += '<div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin:12px 0">';
+  html += '<div class="stat-card"><div class="stat-value">' + (handicapIdx !== null ? handicapIdx.toFixed(1) : '--') + '</div><div class="stat-label">Handicap</div></div>';
+  html += '<div class="stat-card"><div class="stat-value">' + wins + '</div><div class="stat-label">Wins</div></div>';
+  var winRate = rounds.length > 0 ? Math.round((wins / rounds.length) * 100) : 0;
+  html += '<div class="stat-card"><div class="stat-value">' + winRate + '%</div><div class="stat-label">Win Rate</div></div>';
+  html += '</div>';
+
+  // Best / Worst (clickable to see scorecard)
+  if (rounds.length > 0) {
+    var bestRound = rounds.reduce(function(a, b) { return a.grossDiff < b.grossDiff ? a : b; });
+    var worstRound = rounds.reduce(function(a, b) { return a.grossDiff > b.grossDiff ? a : b; });
+    var bestIdx = findRoundIndex(playerId, bestRound.grossDiff, bestRound.courseName);
+    var worstIdx = findRoundIndex(playerId, worstRound.grossDiff, worstRound.courseName);
+    html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
+    html += '<div style="flex:1;padding:10px;background:rgba(74,222,128,0.08);border-radius:8px;border:1px solid rgba(74,222,128,0.15);text-align:center">';
+    html += '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Best Round</div>';
+    html += '<div style="font-weight:700;color:var(--primary);font-family:var(--font-mono)">' + (bestRound.grossDiff > 0 ? '+' : '') + bestRound.grossDiff + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-secondary);cursor:pointer;text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3);text-underline-offset:2px" onclick="setTimeout(function(){showCourseDetail(' + bestRound.courseId + ')},0)">' + bestRound.courseName + '</div>';
+    html += '<div style="font-size:9px;color:var(--primary);margin-top:4px;cursor:pointer" onclick="event.stopPropagation();showRoundScorecard(' + bestIdx + ')">View Scorecard &rarr;</div></div>';
+    html += '<div style="flex:1;padding:10px;background:rgba(248,113,113,0.08);border-radius:8px;border:1px solid rgba(248,113,113,0.15);text-align:center">';
+    html += '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Worst Round</div>';
+    html += '<div style="font-weight:700;color:var(--error);font-family:var(--font-mono)">' + (worstRound.grossDiff > 0 ? '+' : '') + worstRound.grossDiff + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-secondary);cursor:pointer;text-decoration:underline;text-decoration-color:rgba(248,113,113,0.3);text-underline-offset:2px" onclick="setTimeout(function(){showCourseDetail(' + worstRound.courseId + ')},0)">' + worstRound.courseName + '</div>';
+    html += '<div style="font-size:9px;color:var(--error);margin-top:4px;cursor:pointer" onclick="event.stopPropagation();showRoundScorecard(' + worstIdx + ')">View Scorecard &rarr;</div></div>';
+    html += '</div>';
+  }
+
+  // Favorite course
+  if (favCourse) {
+    var favCourseId = -1;
+  for (var fci = 0; fci < state.courses.length; fci++) { if (state.courses[fci].name === favCourse) { favCourseId = state.courses[fci].id; break; } }
+  if (favCourseId >= 0) {
+    html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">&#127969; Favorite course: <strong style="cursor:pointer;text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3);text-underline-offset:2px" onclick="setTimeout(function(){showCourseDetail(' + favCourseId + ')},0)">' + favCourse + '</strong> (' + maxPlays + ' rounds)</div>';
+  } else {
+    html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">&#127969; Favorite course: <strong>' + favCourse + '</strong> (' + maxPlays + ' rounds)</div>';
+  }
+  }
+
+
+
+  // Per-course breakdown
+  if (cKeys.length > 0) {
+    html += '<div style="margin-top:12px"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;font-weight:600">By Course</div>';
+    html += '<table class="history-table" style="font-size:12px"><thead><tr><th>Course</th><th>Rounds</th><th>Avg</th><th>Best</th></tr></thead><tbody>';
+    for (var ck = 0; ck < cKeys.length; ck++) {
+      var cName = cKeys[ck];
+      var cRounds = rounds.filter(function(r) { return r.courseName === cName; });
+      var cAvg = cRounds.reduce(function(a, r) { return a + r.grossDiff; }, 0) / cRounds.length;
+      var cBest = Math.min.apply(null, cRounds.map(function(r) { return r.grossDiff; }));
+      var avgStr = cAvg >= 0 ? '+' + cAvg.toFixed(1) : cAvg.toFixed(1);
+      var bestStr = cBest >= 0 ? '+' + cBest : '' + cBest;
+      var cId = -1;
+      for (var sci = 0; sci < state.courses.length; sci++) { if (state.courses[sci].name === cName) { cId = state.courses[sci].id; break; } }
+      var courseNameClick = cId >= 0 ? '<span style="cursor:pointer;text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3);text-underline-offset:2px" onclick="setTimeout(function(){showCourseDetail(' + cId + ')},0)">' + cName + '</span>' : cName;
+      html += '<tr><td>' + courseNameClick + '</td><td>' + cRounds.length + '</td><td style="font-family:var(--font-mono)">' + avgStr + '</td><td style="font-family:var(--font-mono);color:var(--primary)">' + bestStr + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+  }
+
+
+  // Badges
+  var stats = getPlayerStats(playerId);
+  html += '<div style="margin-top:16px"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;font-weight:600">Badges</div>';
+  var anyUnlocked = false;
+  for (var ai = 0; ai < ACHIEVEMENTS.length; ai++) {
+    var ach = ACHIEVEMENTS[ai];
+    var unlocked = ach.check(stats);
+    if (unlocked) anyUnlocked = true;
+    html += '<div class="achievement' + (unlocked ? '' : ' locked') + '"><div class="ach-icon">' + ach.icon + '</div><div><div class="ach-title">' + ach.title + '</div><div class="ach-desc">' + ach.desc + '</div></div></div>';
+  }
+  if (!anyUnlocked) html += '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">No badges unlocked yet. Keep playing!</div>';
+  html += '</div>';
+
+  showOverlay(html);
+}
+
+function showCourseDetail(courseId) {
+  var course = null;
+  for (var i = 0; i < state.courses.length; i++) { if (state.courses[i].id == courseId) { course = state.courses[i]; break; } }
+  if (!course) return;
+
+  var holes = course.holeIds.map(function(id) { return ALL_HOLES[id]; });
+  var diffLabel = course.avgDifficulty <= 2 ? 'Easy' : course.avgDifficulty <= 3.5 ? 'Medium' : 'Hard';
+  var bclass = course.avgDifficulty <= 2 ? 'badge-easy' : course.avgDifficulty <= 3.5 ? 'badge-med' : 'badge-hard';
+
+  // Gather round stats for this course
+  var courseRounds = state.rounds.filter(function(r) { return r.courseId === courseId; });
+  var playerStats = {};
+  var recordHolder = null;
+  var recordHolderId = null;
+  var recordScore = 999;
+  for (var ri = 0; ri < courseRounds.length; ri++) {
+    for (var rr = 0; rr < courseRounds[ri].results.length; rr++) {
+      var res = courseRounds[ri].results[rr];
+      if (!playerStats[res.playerId]) playerStats[res.playerId] = { name: res.playerName, scores: [] };
+      playerStats[res.playerId].scores.push(res.total);
+      if (res.total < recordScore) { recordScore = res.total; recordHolder = res.playerName; recordHolderId = res.playerId; }
+    }
+  }
+
+  var html = '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px">';
+  html += '<div><div style="font-size:20px;font-weight:700">' + course.name + '</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">' + course.holeIds.length + ' holes &middot; Par ' + course.totalPar + ' &middot; <span class="badge ' + bclass + '">' + diffLabel + '</span></div></div>';
+  html += '<button onclick="closeOverlay()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer">&times;</button></div>';
+
+  // Hole layout
+  html += '<div style="margin-bottom:16px"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;font-weight:600">Hole Layout</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center">';
+  for (var hi = 0; hi < holes.length; hi++) {
+    var h = holes[hi];
+    html += '<div style="text-align:center;padding:6px 4px;background:rgba(20,45,25,0.4);border-radius:6px;border:1px solid rgba(74,222,128,0.08);min-width:40px">';
+    html += '<span class="tee-dot tee-' + h.color + '" style="width:10px;height:10px"></span>';
+    html += '<div style="font-weight:700;font-size:12px;margin-top:2px;color:' + getTeeCSSColor(h.color) + '">' + h.name + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted)">P' + h.par + '</div></div>';
+  }
+  html += '</div></div>';
+
+  // Play button
+  html += '<button class="btn btn-primary" style="width:100%;margin-bottom:16px;justify-content:center" onclick="quickPlay(' + course.id + ')">&#9654;&#65039; Play This Course Now</button>';
+
+  // Stats
+  html += '<div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin:12px 0">';
+  html += '<div class="stat-card"><div class="stat-value">' + courseRounds.length + '</div><div class="stat-label">Times Played</div></div>';
+  html += '<div class="stat-card"><div class="stat-value">' + course.totalPar + '</div><div class="stat-label">Par</div></div>';
+  html += '<div class="stat-card"><div class="stat-value">' + course.avgDifficulty.toFixed(1) + '</div><div class="stat-label">Difficulty</div></div>';
+  html += '</div>';
+
+  // Course record
+  if (recordHolder) {
+    var recDiff = recordScore - course.totalPar;
+    var recStr = recDiff > 0 ? '+' + recDiff : recDiff === 0 ? 'E' : '' + recDiff;
+    html += '<div style="padding:12px;background:rgba(251,191,36,0.08);border-radius:8px;border:1px solid rgba(251,191,36,0.2);margin-bottom:12px;text-align:center">';
+    html += '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Course Record</div>';
+    html += '<div style="font-size:16px;font-weight:700;color:var(--accent);cursor:pointer" onclick="showPlayerDetail(' + recordHolderId + ')">' + recordHolder + ' &mdash; ' + recordScore + ' (' + recStr + ')</div></div>';
+  }
+
+  // Player averages on this course
+  var pKeys = Object.keys(playerStats);
+  if (pKeys.length > 0) {
+    html += '<div style="margin-top:12px"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;font-weight:600">Player Averages</div>';
+    html += '<table class="history-table" style="font-size:12px"><thead><tr><th>Player</th><th>Rounds</th><th>Avg</th><th>Best</th></tr></thead><tbody>';
+    var pArr = [];
+    for (var pk = 0; pk < pKeys.length; pk++) {
+      var ps = playerStats[pKeys[pk]];
+      var avg = ps.scores.reduce(function(a, b) { return a + b; }, 0) / ps.scores.length;
+      var best = Math.min.apply(null, ps.scores);
+      pArr.push({ name: ps.name, id: pKeys[pk], rounds: ps.scores.length, avg: avg, best: best });
+    }
+    pArr.sort(function(a, b) { return a.avg - b.avg; });
+    for (var pa = 0; pa < pArr.length; pa++) {
+      var p = pArr[pa];
+      var avgDiff = p.avg - course.totalPar;
+      var avgStr = avgDiff >= 0 ? '+' + avgDiff.toFixed(1) : avgDiff.toFixed(1);
+      var bestDiff = p.best - course.totalPar;
+      var bestStr = bestDiff >= 0 ? '+' + bestDiff : '' + bestDiff;
+      html += '<tr><td style="cursor:pointer" onclick="showPlayerDetail(' + p.id + ')">' + p.name + '</td><td>' + p.rounds + '</td><td style="font-family:var(--font-mono)">' + avgStr + '</td><td style="font-family:var(--font-mono);color:var(--primary)">' + bestStr + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+  }
+
+  showOverlay(html);
+}
+
+function showHoleDetail(holeId) {
+  var hole = ALL_HOLES[holeId];
+  if (!hole) return;
+
+  // Gather stats for this hole across all rounds
+  var holeScores = {};
+  for (var ri = 0; ri < state.rounds.length; ri++) {
+    var round = state.rounds[ri];
+    var course = null;
+    for (var ci = 0; ci < state.courses.length; ci++) { if (state.courses[ci].id === round.courseId) { course = state.courses[ci]; break; } }
+    if (!course) continue;
+    var hIdx = -1;
+    for (var hi = 0; hi < course.holeIds.length; hi++) { if (course.holeIds[hi] === holeId) { hIdx = hi; break; } }
+    if (hIdx === -1) continue;
+    for (var rr = 0; rr < round.results.length; rr++) {
+      var res = round.results[rr];
+      var score = res.scores[hIdx];
+      if (score === null || score === undefined) continue;
+      if (!holeScores[res.playerId]) holeScores[res.playerId] = { name: res.playerName, scores: [] };
+      holeScores[res.playerId].scores.push(score);
+    }
+  }
+
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  html += '<div style="display:flex;align-items:center;gap:12px"><span class="tee-dot tee-' + hole.color + '" style="width:28px;height:28px"></span>';
+  html += '<div><div style="font-size:20px;font-weight:700">' + hole.fullName + '</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted)">Par ' + hole.par + ' &middot; Difficulty: ' + '&#11088;'.repeat(hole.difficulty) + '</div></div></div>';
+  html += '<button onclick="closeOverlay()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer">&times;</button></div>';
+
+  // Description placeholder
+  var desc = hole.description || null;
+  if (desc) {
+    html += '<div style="padding:12px;background:rgba(20,45,25,0.4);border-radius:8px;margin-bottom:12px;font-size:13px;color:var(--text-secondary);font-style:italic">' + desc + '</div>';
+  } else {
+    html += '<div style="padding:12px;background:rgba(20,45,25,0.3);border-radius:8px;margin-bottom:12px;font-size:12px;color:var(--text-muted);text-align:center">No description yet. Add one in Developer Mode.</div>';
+  }
+
+  // Stats
+  var totalPlays = 0;
+  var allScoresArr = [];
+  var hioCount = 0;
+  var pKeys = Object.keys(holeScores);
+  for (var pk = 0; pk < pKeys.length; pk++) {
+    var ps = holeScores[pKeys[pk]];
+    totalPlays += ps.scores.length;
+    for (var si = 0; si < ps.scores.length; si++) {
+      allScoresArr.push(ps.scores[si]);
+      if (ps.scores[si] === 1 && hole.par >= 2) hioCount++;
+    }
+  }
+  var overallAvg = allScoresArr.length > 0 ? (allScoresArr.reduce(function(a, b) { return a + b; }, 0) / allScoresArr.length) : 0;
+
+  html += '<div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin:12px 0">';
+  html += '<div class="stat-card"><div class="stat-value">' + totalPlays + '</div><div class="stat-label">Times Played</div></div>';
+  html += '<div class="stat-card"><div class="stat-value">' + (overallAvg > 0 ? overallAvg.toFixed(1) : '--') + '</div><div class="stat-label">Avg Score</div></div>';
+  html += '<div class="stat-card"><div class="stat-value">' + hioCount + '</div><div class="stat-label">Hole in Ones</div></div>';
+  html += '</div>';
+
+  // Player breakdown
+  if (pKeys.length > 0) {
+    html += '<div style="margin-top:12px"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;font-weight:600">Player Scores</div>';
+    html += '<table class="history-table" style="font-size:12px"><thead><tr><th>Player</th><th>Played</th><th>Avg</th><th>Best</th></tr></thead><tbody>';
+    var pArr = [];
+    for (var pk = 0; pk < pKeys.length; pk++) {
+      var ps = holeScores[pKeys[pk]];
+      var avg = ps.scores.reduce(function(a, b) { return a + b; }, 0) / ps.scores.length;
+      var best = Math.min.apply(null, ps.scores);
+      pArr.push({ name: ps.name, id: pKeys[pk], count: ps.scores.length, avg: avg, best: best });
+    }
+    pArr.sort(function(a, b) { return a.avg - b.avg; });
+    for (var pa = 0; pa < pArr.length; pa++) {
+      var p = pArr[pa];
+      var avgColor = p.avg <= hole.par ? 'var(--primary)' : p.avg > hole.par + 0.5 ? 'var(--error)' : 'var(--text)';
+      html += '<tr><td style="cursor:pointer" onclick="showPlayerDetail(' + p.id + ')">' + p.name + '</td><td>' + p.count + '</td><td style="font-family:var(--font-mono);color:' + avgColor + '">' + p.avg.toFixed(1) + '</td><td style="font-family:var(--font-mono);color:var(--primary)">' + p.best + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+  }
+
+  showOverlay(html);
+}
+
+
+function showRoundScorecard(roundIdx) {
+  var round = state.rounds[roundIdx];
+  if (!round) return;
+  var course = null;
+  for (var ci = 0; ci < state.courses.length; ci++) { if (state.courses[ci].id === round.courseId) { course = state.courses[ci]; break; } }
+  
+  var d = new Date(round.date);
+  var dateStr = (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear();
+  
+  var html = '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px">';
+  html += '<div><div style="font-size:18px;font-weight:700;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3);text-underline-offset:2px" onclick="showCourseDetail(' + round.courseId + ')">' + round.courseName + '</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted)">' + dateStr + ' &middot; Par ' + round.coursePar + '</div></div>';
+  html += '<button onclick="closeOverlay()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer">&times;</button></div>';
+
+  // Build scorecard table
+  var holes = [];
+  if (course) { holes = course.holeIds.map(function(id) { return ALL_HOLES[id]; }); }
+  
+  html += '<div style="overflow-x:auto"><table class="history-table" style="font-size:11px;text-align:center"><thead><tr><th style="text-align:left">Player</th>';
+  if (holes.length > 0) {
+    for (var h = 0; h < holes.length; h++) {
+      html += '<th style="padding:4px 3px"><span class="tee-dot tee-' + holes[h].color + '" style="width:6px;height:6px;border-width:1px"></span><br>' + holes[h].name + '</th>';
+    }
+  } else {
+    // No course detail available, just show numbered holes
+    var numHoles = round.results[0] ? round.results[0].scores.length : 0;
+    for (var h = 0; h < numHoles; h++) html += '<th style="padding:4px 3px">' + (h+1) + '</th>';
+  }
+  html += '<th>TOT</th><th>+/-</th></tr></thead><tbody>';
+
+  // Par row
+  if (holes.length > 0) {
+    html += '<tr style="color:var(--text-muted)"><td style="text-align:left;font-size:10px">PAR</td>';
+    for (var h = 0; h < holes.length; h++) html += '<td style="padding:4px 3px;font-size:10px">' + holes[h].par + '</td>';
+    html += '<td style="font-weight:600">' + round.coursePar + '</td><td></td></tr>';
+  }
+
+  // Player rows
+  for (var pi = 0; pi < round.results.length; pi++) {
+    var res = round.results[pi];
+    var diff = res.total - round.coursePar;
+    var diffStr = diff > 0 ? '+' + diff : diff === 0 ? 'E' : '' + diff;
+    var diffColor = diff < 0 ? 'var(--primary)' : diff > 0 ? 'var(--error)' : 'var(--text)';
+    html += '<tr><td style="text-align:left;font-weight:600;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(74,222,128,0.3);text-underline-offset:2px" onclick="showPlayerDetail(' + res.playerId + ')">' + res.playerName + '</td>';
+    for (var si = 0; si < res.scores.length; si++) {
+      var s = res.scores[si];
+      var cellColor = 'var(--text)';
+      if (s !== null && holes.length > 0) {
+        var d2 = s - holes[si].par;
+        if (s === 1) cellColor = 'var(--accent)';
+        else if (d2 < 0) cellColor = 'var(--primary)';
+        else if (d2 > 0) cellColor = 'var(--error)';
+      }
+      html += '<td style="padding:4px 3px;font-family:var(--font-mono);color:' + cellColor + '">' + (s !== null ? s : '-') + '</td>';
+    }
+    html += '<td style="font-weight:700;font-family:var(--font-mono)">' + res.total + '</td>';
+    html += '<td style="color:' + diffColor + ';font-weight:600;font-family:var(--font-mono)">' + diffStr + '</td></tr>';
+  }
+  html += '</tbody></table></div>';
+
+  showOverlay(html);
+}
+
+function findRoundIndex(playerId, grossDiff, courseName) {
+  // Find the round that matches these criteria for linking from player detail
+  for (var ri = state.rounds.length - 1; ri >= 0; ri--) {
+    var round = state.rounds[ri];
+    if (round.courseName !== courseName) continue;
+    for (var rr = 0; rr < round.results.length; rr++) {
+      if (round.results[rr].playerId === playerId && (round.results[rr].total - round.coursePar) === grossDiff) {
+        return ri;
+      }
+    }
+  }
+  return -1;
+}
+
+
+function filterPlayers(query) {
+  // When searching, show all players that match (not limited to 8)
+  var rows = document.querySelectorAll('#page-players .player-row');
+  if (!query) {
+    // No search - just show/hide based on the current rendered set
+    for (var i = 0; i < rows.length; i++) rows[i].style.display = '';
+    return;
+  }
+  query = query.toLowerCase();
+  for (var i = 0; i < rows.length; i++) {
+    var name = rows[i].textContent.toLowerCase();
+    rows[i].style.display = name.indexOf(query) >= 0 ? '' : 'none';
+  }
+  // If searching and players are hidden by the 8-limit, re-render to show all
+  if (query.length > 0 && !state._showAllGolfers) {
+    state._showAllGolfers = true;
+    renderPlayersPage();
+    // Re-set the search value and re-filter after render
+    setTimeout(function() {
+      var el = document.getElementById('player-search');
+      if (el) { el.value = query; el.focus(); filterPlayers(query); }
+    }, 10);
+  }
+}
+
+function filterCourses(query) {
+  var rows = document.querySelectorAll('#page-course .player-row');
+  query = query.toLowerCase();
+  for (var i = 0; i < rows.length; i++) {
+    var name = rows[i].textContent.toLowerCase();
+    rows[i].style.display = name.indexOf(query) >= 0 ? '' : 'none';
+  }
+}
+
+function filterHistory(query) {
+  var rows = document.querySelectorAll('#page-history .player-row');
+  query = query.toLowerCase();
+  for (var i = 0; i < rows.length; i++) {
+    var name = rows[i].textContent.toLowerCase();
+    rows[i].style.display = name.indexOf(query) >= 0 ? '' : 'none';
+  }
+}
+
+
+function quickPlay(courseId) {
+  closeOverlay();
+  for (var i = 0; i < state.courses.length; i++) {
+    if (state.courses[i].id === courseId) { state.selectedCourse = state.courses[i]; break; }
+  }
+  showPage('play');
+}
+
+// ===================== INIT =====================
+loadState();
+if (!state.selectedCourse && state.courses.length > 0) state.selectedCourse = state.courses[0];
+renderNav();
+renderCoursePage();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function() {});
+  });
+}
+</script>
+</body>
+</html>

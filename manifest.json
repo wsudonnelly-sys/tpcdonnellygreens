@@ -1,0 +1,22 @@
+{
+  "name": "TPC Donnelly Greens",
+  "short_name": "Donnelly Greens",
+  "description": "Digital scorecard for TPC Donnelly Greens backyard putting course",
+  "start_url": "/tpc-donnelly-greens/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1f14",
+  "theme_color": "#1a5c2e",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
