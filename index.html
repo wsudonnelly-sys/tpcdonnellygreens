@@ -1918,76 +1918,47 @@ function renderRoundSummary() {
   var diff = winner.total - pr.coursePar;
   var diffStr = diff > 0 ? '+' + diff : diff === 0 ? 'E' : '' + diff;
   
-  // Generate detailed commentary
+  // Generate qualitative story-style commentary
   var commentary = '';
-  var highlights = [];
+  var margin = sorted.length > 1 ? sorted[1].total - sorted[0].total : 0;
+  var isTie = sorted.length > 1 && sorted[0].total === sorted[1].total;
+  var lastPlace = sorted[sorted.length - 1];
   
-  // Winner/tie detection
-  if (sorted.length > 1 && sorted[0].total === sorted[1].total) {
-    commentary = '\u{1F3C6} It\'s a tie! ' + sorted[0].playerName + ' and ' + sorted[1].playerName + ' finished dead even at ' + sorted[0].total + ' (' + diffStr + '). A playoff is in order!';
-  } else {
-    var margin = sorted[1] ? sorted[1].total - sorted[0].total : 0;
-    if (margin >= 5) {
-      commentary = '\u{1F525} Dominant performance! ' + winner.playerName + ' ran away with it, winning by ' + margin + ' strokes.';
-    } else if (margin >= 3) {
-      commentary = '\u{1F3C6} ' + winner.playerName + ' takes it comfortably with a ' + margin + '-stroke victory!';
-    } else if (margin >= 1) {
-      commentary = '\u{26F3} ' + winner.playerName + ' edges out the competition by ' + margin + ' stroke' + (margin > 1 ? 's' : '') + '. A tight battle!';
-    } else {
-      commentary = '\u{1F3C6} ' + winner.playerName + ' wins with a score of ' + winner.total + ' (' + diffStr + ')!';
-    }
-  }
-  
-  // Per-player analysis
+  // Count HIOs and birdies for flavor
+  var totalHios = 0, totalBirdies = 0;
   for (var pi2 = 0; pi2 < pr.results.length; pi2++) {
-    var res2 = pr.results[pi2];
-    var birdies = 0, pars = 0, bogeys = 0, hioCount = 0, bestHoleDiff = 99, worstHoleDiff = -99;
-    var bestHoleNum = 0, worstHoleNum = 0;
-    for (var si2 = 0; si2 < res2.scores.length; si2++) {
-      if (res2.scores[si2] === null) continue;
-      var holePar = r.holes[si2].par;
-      var d2 = res2.scores[si2] - holePar;
-      if (res2.scores[si2] === 1 && holePar >= 2) hioCount++;
-      else if (d2 < 0) birdies++;
-      else if (d2 === 0) pars++;
-      else bogeys++;
-      if (d2 < bestHoleDiff) { bestHoleDiff = d2; bestHoleNum = si2 + 1; }
-      if (d2 > worstHoleDiff) { worstHoleDiff = d2; worstHoleNum = si2 + 1; }
-    }
-    var pLine = '<strong>' + res2.playerName + ':</strong> ';
-    var pParts = [];
-    if (hioCount > 0) pParts.push(hioCount + ' hole-in-one' + (hioCount > 1 ? 's' : '') + ' \u{1F4A5}');
-    if (birdies > 0) pParts.push(birdies + ' birdie' + (birdies > 1 ? 's' : ''));
-    if (pars > 0) pParts.push(pars + ' par' + (pars > 1 ? 's' : ''));
-    if (bogeys > 0) pParts.push(bogeys + ' bogey' + (bogeys > 1 ? 's' : ''));
-    pLine += pParts.join(', ');
-    if (bestHoleDiff <= -1) pLine += '. Best: Hole ' + bestHoleNum;
-    if (worstHoleDiff >= 2) pLine += '. Rough: Hole ' + worstHoleNum;
-    highlights.push(pLine);
-  }
-  
-  // Check for course record
-  var existingBest = 999;
-  for (var er = 0; er < state.rounds.length; er++) {
-    if (state.rounds[er].courseId === pr.courseId) {
-      for (var err = 0; err < state.rounds[er].results.length; err++) {
-        if (state.rounds[er].results[err].total < existingBest) existingBest = state.rounds[er].results[err].total;
-      }
+    for (var si2 = 0; si2 < pr.results[pi2].scores.length; si2++) {
+      if (pr.results[pi2].scores[si2] === null) continue;
+      if (pr.results[pi2].scores[si2] === 1 && r.holes[si2].par >= 2) totalHios++;
+      else if (pr.results[pi2].scores[si2] - r.holes[si2].par < 0) totalBirdies++;
     }
   }
-  if (winner.total < existingBest) {
-    commentary += ' \u{1F6A8} NEW COURSE RECORD!';
-  } else if (winner.total === existingBest) {
-    commentary += ' Tied the course record!';
+  
+  // Build a 3-4 sentence story
+  if (isTie) {
+    commentary = sorted[0].playerName + ' and ' + sorted[1].playerName + ' went back and forth all round and couldn\u2019t be separated\u2014finishing in a dead heat at ' + sorted[0].total + '. ';
+    commentary += 'Neither player blinked, trading great shots down the stretch. ';
+    commentary += 'A rematch is inevitable.';
+  } else if (margin >= 5) {
+    commentary = winner.playerName + ' was on another level today, running away from the field and never looking back. ';
+    commentary += lastPlace.playerName + ' fought hard but couldn\u2019t find a rhythm. ';
+    if (totalHios > 0) commentary += 'The round featured ' + totalHios + ' ace' + (totalHios > 1 ? 's' : '') + ' that had everyone cheering. ';
+    else commentary += 'A clinic in putting from start to finish. ';
+    commentary += 'The ' + margin + '-stroke margin tells the whole story.';
+  } else if (margin >= 3) {
+    commentary = winner.playerName + ' built an early lead and never let go, staying steady while others faltered. ';
+    if (totalBirdies > 3) commentary += 'Birdies were flying today\u2014the greens were giving back. ';
+    else commentary += 'Consistency was the name of the game. ';
+    commentary += sorted[1].playerName + ' made a push but ran out of holes. ';
+    commentary += 'A solid win for ' + winner.playerName + '.';
+  } else {
+    commentary = 'This one came down to the wire. ' + winner.playerName + ' and ' + sorted[1].playerName + ' were neck and neck for most of the round. ';
+    if (totalHios > 0) commentary += 'A clutch hole-in-one made all the difference. ';
+    else commentary += 'It was the pars\u2014not the heroics\u2014that separated the two. ';
+    commentary += winner.playerName + ' held nerve when it mattered most, edging it by just ' + margin + '. ';
+    commentary += 'One to remember at TPC Donnelly Greens.';
   }
   
-  // Build highlights HTML
-  var highlightsHtml = '<div style="text-align:left;margin-top:8px;font-size:12px;line-height:1.8">';
-  for (var hl = 0; hl < highlights.length; hl++) {
-    highlightsHtml += '<div style="padding:2px 0">' + highlights[hl] + '</div>';
-  }
-  highlightsHtml += '</div>';
-  commentary += highlightsHtml;
 var html = '<div class="card" style="text-align:center">';
   html += '<div style="font-size:28px;margin-bottom:8px">\u{1F3CC}\uFE0F</div>';
   html += '<div class="card-title" style="justify-content:center">Round Complete!</div>';
