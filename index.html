@@ -263,9 +263,9 @@ select.input { cursor: pointer; }
 .tee-dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; border: 2px solid rgba(255,255,255,0.4); vertical-align: middle; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 .tee-Red { background: #e74c3c; }
 .tee-Blue { background: #3498db; }
-.tee-Pink { background: #ff69b4; }
+.tee-Pink { background: #ff8cc8; }
 .tee-Yellow { background: #FFD700; }
-.tee-Purple { background: #9b59b6; }
+.tee-Purple { background: #7b2d8b; }
 .tee-Orange { background: #e67e22; }
 .tee-White { background: #ecf0f1; border-color: #aaa; }
 .tee-Black { background: #111111; border-color: #444; }
@@ -335,11 +335,11 @@ select.input { cursor: pointer; }
 .sc-table-wrap { overflow-x: auto; position: relative; z-index: 1; }
 .sc-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--font-mono); }
 .sc-table th {
-  padding: 8px 4px;
+  padding: 12px 6px;
   text-align: center;
   background: var(--scorecard-header);
   color: white;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -347,14 +347,15 @@ select.input { cursor: pointer; }
 .sc-table th:first-child { text-align: left; padding-left: 8px; border-radius: 4px 0 0 0; }
 .sc-table th:last-child { border-radius: 0 4px 0 0; }
 .sc-table td {
-  padding: 12px 6px;
+  padding: 16px 8px;
   text-align: center;
   border-bottom: 1px solid var(--scorecard-line);
-  min-width: 46px;
-  min-height: 46px;
+  min-width: 52px;
+  min-height: 54px;
   cursor: pointer;
   -webkit-tap-highlight-color: rgba(74,222,128,0.2);
   touch-action: manipulation;
+  font-size: 15px;
 }
 .sc-table td:active { background: rgba(124,252,0,0.15); }
 .sc-table td:hover, .sc-table td:active { background: rgba(124,252,0,0.12); }
@@ -565,6 +566,78 @@ select.input { cursor: pointer; }
   .nav-btn { padding: 6px 10px; font-size: 12px; }
   .app-header h1 { font-size: 20px; }
 }
+
+
+/* ========== LIGHT THEME ========== */
+[data-theme="light"] {
+  --bg: #f5f7f5;
+  --surface: rgba(255,255,255,0.9);
+  --surface-2: rgba(240,248,240,0.95);
+  --surface-3: rgba(230,245,230,0.8);
+  --primary: #1a7a3a;
+  --primary-dim: #15632e;
+  --accent: #d97706;
+  --accent-dim: #b45309;
+  --text: #1a2e1a;
+  --text-secondary: #3d5e3d;
+  --text-muted: #6b8a6b;
+  --border: rgba(26,92,46,0.15);
+  --border-light: rgba(26,92,46,0.08);
+  --success: #15803d;
+  --warning: #d97706;
+  --error: #dc2626;
+  --gold: #d97706;
+  --silver: #6b7280;
+  --bronze: #92400e;
+  --scorecard-bg: #fafaf5;
+  --scorecard-text: #1f2937;
+  --scorecard-line: #d4d0c8;
+  --scorecard-header: #1a4025;
+}
+[data-theme="light"] body {
+  background: #f5f7f5;
+  color: #1a2e1a;
+}
+[data-theme="light"] body::before {
+  background: radial-gradient(ellipse at top, #e8f5e8 0%, #f5f7f5 50%);
+}
+[data-theme="light"] body::after { background: none; }
+[data-theme="light"] .trees { opacity: 0.03; }
+[data-theme="light"] .app-header h1 { color: #1a2e1a; }
+[data-theme="light"] .app-header h1 span { color: #1a7a3a; }
+[data-theme="light"] .app-header .subtitle { color: #6b8a6b; }
+[data-theme="light"] .nav { background: rgba(255,255,255,0.95); border-color: rgba(26,92,46,0.1); }
+[data-theme="light"] .nav-btn { background: rgba(26,92,46,0.05); color: #3d5e3d; }
+[data-theme="light"] .nav-btn.active { background: #1a7a3a; color: white; }
+[data-theme="light"] .card { background: white; border: 1px solid rgba(26,92,46,0.1); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+[data-theme="light"] .card-title { color: #1a2e1a; }
+[data-theme="light"] .card-subtitle { color: #6b8a6b; }
+[data-theme="light"] .player-row { background: rgba(26,92,46,0.03); border-color: rgba(26,92,46,0.08); }
+[data-theme="light"] .player-avatar { background: #1a7a3a; color: white; }
+[data-theme="light"] .btn { border-color: rgba(26,92,46,0.2); color: #3d5e3d; }
+[data-theme="light"] .btn-primary { background: #1a7a3a; color: white; border-color: #1a7a3a; }
+[data-theme="light"] .btn-secondary { background: white; border-color: rgba(26,92,46,0.2); color: #3d5e3d; }
+[data-theme="light"] .btn-gold { background: #d97706; border-color: #b45309; color: white; }
+[data-theme="light"] .input { background: white; border-color: rgba(26,92,46,0.2); color: #1a2e1a; }
+[data-theme="light"] .stat-card { background: rgba(26,92,46,0.04); border-color: rgba(26,92,46,0.1); }
+[data-theme="light"] .stat-value { color: #1a7a3a; }
+[data-theme="light"] .toggle { background: rgba(26,92,46,0.15); }
+[data-theme="light"] .toggle.on { background: #1a7a3a; }
+[data-theme="light"] .badge-easy { background: rgba(21,128,61,0.1); color: #15803d; }
+[data-theme="light"] .badge-med { background: rgba(217,119,6,0.1); color: #b45309; }
+[data-theme="light"] .badge-hard { background: rgba(220,38,38,0.1); color: #dc2626; }
+[data-theme="light"] .hole-chip { background: white; border-color: rgba(26,92,46,0.15); }
+[data-theme="light"] .hole-chip.selected { background: rgba(26,122,58,0.1); border-color: #1a7a3a; }
+[data-theme="light"] .diff-btn { background: white; border-color: rgba(26,92,46,0.15); color: #3d5e3d; }
+[data-theme="light"] .diff-btn.active { background: #1a7a3a; color: white; }
+[data-theme="light"] .course-summary { background: rgba(26,92,46,0.04); border-color: rgba(26,92,46,0.1); }
+[data-theme="light"] .empty-state { color: #6b8a6b; }
+[data-theme="light"] .scorecard-card { background: #fafaf5; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+[data-theme="light"] .sc-table td { border-color: #d4d0c8; color: #1f2937; }
+[data-theme="light"] .sc-table th { background: #1a4025; }
+[data-theme="light"] .sc-table tr.par-row { background: rgba(26,64,37,0.06); }
+[data-theme="light"] #theme-toggle { border-color: rgba(26,92,46,0.2); color: #3d5e3d; }
+
 </style>
 </head>
 <body>
@@ -573,6 +646,7 @@ select.input { cursor: pointer; }
 <div class="trees" id="trees-bg"></div>
 
 <div class="app-header">
+<button id="theme-toggle" onclick="toggleTheme()" style="position:absolute;top:12px;right:12px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:600;color:var(--text-muted);touch-action:manipulation;white-space:nowrap" title="Toggle light/dark mode">Light Mode</button>
 <h1>&#9971; TPC - Donnelly Greens</h1>
   <div class="subtitle">Mini Golf Scorecard</div>
   <div class="header-decor">
@@ -601,13 +675,66 @@ select.input { cursor: pointer; }
 
 <script>
 window.onerror = function(msg, src, line) { return true; };
+
+// Theme: auto-detect + manual override
+function initTheme() {
+  var saved = null;
+  try { saved = localStorage.getItem('tpc-theme'); } catch(e) {}
+  if (saved === 'light' || saved === 'dark') {
+    if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+  } else {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  }
+  updateThemeIcon();
+}
+
+function toggleTheme() {
+  var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  if (isLight) {
+    document.documentElement.removeAttribute('data-theme');
+    try { localStorage.setItem('tpc-theme', 'dark'); } catch(e) {}
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+    try { localStorage.setItem('tpc-theme', 'light'); } catch(e) {}
+  }
+  updateThemeIcon();
+  // Re-render scorecard if active (to update toggle button text)
+  if (state.currentRound && !state.showPauseMenu) { renderPlayPage(); }
+}
+
+function updateThemeIcon() {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  btn.textContent = isLight ? 'Dark Mode' : 'Light Mode';
+}
+
+if (window.matchMedia) {
+  try {
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function(e) {
+      var saved = null;
+      try { saved = localStorage.getItem('tpc-theme'); } catch(ex) {}
+      if (!saved) {
+        if (e.matches) document.documentElement.setAttribute('data-theme', 'light');
+        else document.documentElement.removeAttribute('data-theme');
+        updateThemeIcon();
+      }
+    });
+  } catch(e) {}
+}
+
+initTheme();
+
 // ===================== CONFIG =====================
 var TEE_COLORS = ['Red', 'Blue', 'Pink', 'Yellow', 'Purple', 'Orange', 'White', 'Black'];
 var FLAG_NUMBERS = [1, 2, 3, 4];
 var ALL_HOLES = [];
 var COLOR_DIFF = { Red: 1, Blue: 2, Pink: 2, Yellow: 3, Purple: 3, Orange: 4, White: 4, Black: 5 };
 
-var TEE_CSS_COLORS = { Red: '#e74c3c', Blue: '#3498db', Pink: '#ff69b4', Yellow: '#FFD700', Purple: '#9b59b6', Orange: '#e67e22', White: '#ecf0f1', Black: '#111111' };
+var TEE_CSS_COLORS = { Red: '#e74c3c', Blue: '#3498db', Pink: '#ff8cc8', Yellow: '#FFD700', Purple: '#7b2d8b', Orange: '#e67e22', White: '#ecf0f1', Black: '#111111' };
 function getTeeCSSColor(color) { return TEE_CSS_COLORS[color] || '#fff'; }
 
 var REAL_PARS = [2,1.5,1.5,2.5,1.5,1.5,2,2.5,1.5,2,2,2.5,2,2,2,2,2.5,2.5,2,1.5,2.5,2.5,1.5,1.5,1.5,1.5,2,2.5,2.5,2.5,2,1.5];
@@ -748,7 +875,7 @@ function getPlayerStats(playerId) {
       if (holes[si] && sc <= holes[si].par) { streak++; if (streak > stats.bestStreak) stats.bestStreak = streak; } else { streak = 0; allPar = false; }
     }
     if (allPar && result.scores.length > 0 && result.scores[0] !== null) stats.hasPerfectRound = true;
-    if (course.avgDifficulty >= 3.5) {
+    if (course.avgDifficulty >= 4.2) {
       var best = result.total; var isWinner = true;
       for (var wr = 0; wr < round.results.length; wr++) { if (round.results[wr].playerId !== playerId && round.results[wr].total < best) { isWinner = false; break; } }
       if (isWinner) stats.hardCourseWins++;
@@ -804,9 +931,9 @@ function renderCoursePage() {
   html += '<div class="mb-12"><input class="input" placeholder="&#128269; Search courses..." oninput="filterCourses(this.value)" style="font-size:13px"></div>';
   var filteredCourses = state.courses.filter(function(c) {
     if (!state.targetDiff) return true;
-    if (state.targetDiff === "easy") return c.avgDifficulty <= 2;
-    if (state.targetDiff === "medium") return c.avgDifficulty > 2 && c.avgDifficulty <= 3.5;
-    if (state.targetDiff === "hard") return c.avgDifficulty > 3.5;
+    if (state.targetDiff === "easy") return c.avgDifficulty <= 3.5;
+    if (state.targetDiff === "medium") return c.avgDifficulty > 3.5 && c.avgDifficulty <= 4.2;
+    if (state.targetDiff === "hard") return c.avgDifficulty > 4.2;
     return true;
   });
   if (filteredCourses.length === 0) {
@@ -814,8 +941,8 @@ function renderCoursePage() {
   } else {
     for (var c = 0; c < filteredCourses.length; c++) {
       var course = filteredCourses[c];
-      var bclass = course.avgDifficulty <= 2 ? 'badge-easy' : course.avgDifficulty <= 3.5 ? 'badge-med' : 'badge-hard';
-      var blabel = course.avgDifficulty <= 2 ? 'Easy' : course.avgDifficulty <= 3.5 ? 'Medium' : 'Hard';
+      var bclass = course.avgDifficulty <= 4.2 ? 'badge-easy' : course.avgDifficulty <= 4.2 ? 'badge-med' : 'badge-hard';
+      var blabel = course.avgDifficulty <= 4.2 ? 'Easy' : course.avgDifficulty <= 4.2 ? 'Medium' : 'Hard';
       var isSelected = state.selectedCourse && state.selectedCourse.id === course.id;
       var rowStyle = isSelected ? 'border:2px solid var(--primary);background:rgba(124,252,0,0.05)' : '';
       html += '<div class="player-row" style="' + rowStyle + '">';
@@ -923,9 +1050,9 @@ function toggleHole(id) {
 function randomCourse() {
   state.selectedHoles = {};
   var pool = ALL_HOLES.slice();
-  if (state.targetDiff === 'easy') pool = pool.filter(function(h) { return h.difficulty <= 2; });
-  else if (state.targetDiff === 'medium') pool = pool.filter(function(h) { return h.difficulty >= 2 && h.difficulty <= 4; });
-  else if (state.targetDiff === 'hard') pool = pool.filter(function(h) { return h.difficulty >= 3; });
+  if (state.targetDiff === 'easy') pool = pool.filter(function(h) { return h.difficulty <= 3; });
+  else if (state.targetDiff === 'medium') pool = pool.filter(function(h) { return h.difficulty >= 3 && h.difficulty <= 4; });
+  else if (state.targetDiff === 'hard') pool = pool.filter(function(h) { return h.difficulty >= 5; });
   for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp; }
   var pick = pool.slice(0, state.courseSize);
   state.holeOrder = [];
@@ -1019,8 +1146,8 @@ function renderPlayPage() {
       html += '<div style="font-size:13px;color:var(--text-secondary)">Players choose each hole in sequence. Select tee/flag before each putt.</div></div>';
     } else if (state.selectedCourse) {
       var sc = state.selectedCourse;
-      var scDl = sc.avgDifficulty <= 2 ? 'Easy' : sc.avgDifficulty <= 3.5 ? 'Medium' : 'Hard';
-      var scBclass = sc.avgDifficulty <= 2 ? 'badge-easy' : sc.avgDifficulty <= 3.5 ? 'badge-med' : 'badge-hard';
+      var scDl = sc.avgDifficulty <= 4.2 ? 'Easy' : sc.avgDifficulty <= 4.2 ? 'Medium' : 'Hard';
+      var scBclass = sc.avgDifficulty <= 4.2 ? 'badge-easy' : sc.avgDifficulty <= 4.2 ? 'badge-med' : 'badge-hard';
       html += '<div class="player-row" style="border:2px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.05)">';
       html += '<div style="flex:1"><div style="font-weight:700;font-size:15px">' + sc.name + '</div>';
       html += '<div style="font-size:12px;color:var(--text-muted)">' + sc.holeIds.length + ' holes &middot; Par ' + sc.totalPar + '</div></div>';
@@ -1031,8 +1158,8 @@ function renderPlayPage() {
       html += '<div style="margin-top:4px">';
       for (var ci = 0; ci < state.courses.length; ci++) {
         var crs = state.courses[ci];
-        var cBclass = crs.avgDifficulty <= 2 ? 'badge-easy' : crs.avgDifficulty <= 3.5 ? 'badge-med' : 'badge-hard';
-        var cBlabel = crs.avgDifficulty <= 2 ? 'Easy' : crs.avgDifficulty <= 3.5 ? 'Medium' : 'Hard';
+        var cBclass = crs.avgDifficulty <= 4.2 ? 'badge-easy' : crs.avgDifficulty <= 4.2 ? 'badge-med' : 'badge-hard';
+        var cBlabel = crs.avgDifficulty <= 4.2 ? 'Easy' : crs.avgDifficulty <= 4.2 ? 'Medium' : 'Hard';
         html += '<div class="player-row" style="cursor:pointer" onclick="quickSelectCourse(' + crs.id + ')">';
         html += '<div style="flex:1"><div style="font-weight:600">' + crs.name + '</div>';
         html += '<div style="font-size:11px;color:var(--text-muted)">' + crs.holeIds.length + ' holes &middot; Par ' + crs.totalPar + '</div></div>';
@@ -1127,8 +1254,8 @@ function startRound() {
 function enterScorecardMode() {
   document.getElementById('main-nav').style.display = 'none';
   document.querySelector('.app-header').style.display = 'none';
-  document.querySelector('.container').style.padding = '12px';
-  document.querySelector('.container').style.maxWidth = '540px';
+  document.querySelector('.container').style.padding = '8px';
+  document.querySelector('.container').style.maxWidth = '100%';
 }
 
 function exitScorecardMode() {
@@ -1275,10 +1402,11 @@ function renderScorecard() {
   for (var cp = 0; cp < r.holes.length; cp++) coursePar += r.holes[cp].par;
 
   var html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px">';
-  html += '<button class="btn btn-sm btn-secondary" onclick="exitScorecardMode()">&larr; Menu</button>';
-  html += '<div style="text-align:center;flex:1"><div style="font-family:var(--font);font-weight:700;font-size:16px;color:var(--primary)">' + r.courseName + '</div>';
+  html += '<button class="btn btn-sm btn-secondary" style="font-size:14px;padding:10px 14px" onclick="exitScorecardMode()">&larr; Menu</button>';
+  html += '<div style="text-align:center;flex:1"><div style="font-family:var(--font);font-weight:700;font-size:18px;color:var(--primary)">' + r.courseName + '</div>';
   html += '<div style="font-size:11px;color:var(--text-muted)">Par ' + coursePar + ' &middot; ' + (r.gameMode === 'match' ? '&#9876;&#65039; Match Play' : '&#9971; Stroke Play') + '</div></div>';
-  html += '<button class="btn btn-sm btn-gold" onclick="finishRound()">&#9989; Done</button></div>';
+  html += '<button class="btn btn-sm btn-secondary" style="font-size:11px;padding:8px 10px" onclick="toggleTheme()">' + (document.documentElement.getAttribute('data-theme') === 'light' ? 'Dark Mode' : 'Light Mode') + '</button>';
+  html += '<button class="btn btn-sm btn-gold" style="font-size:14px;padding:10px 14px" onclick="finishRound()">&#9989; Done</button></div>';
 
   // Scorecard grid - paper style
   var is9Hole = r.holes.length <= 9;
@@ -1301,23 +1429,23 @@ function renderScorecard() {
     html += '<tr style="background:var(--scorecard-header)">';
     html += '<th style="text-align:left;padding-left:8px;color:white;font-size:10px">HOLE</th>';
     for (var h = startH; h < endH; h++) {
-      html += '<th style="color:white;font-size:' + (is9Hole ? '12' : '10') + 'px;padding:' + (is9Hole ? '10px 6px' : '6px 2px') + ';cursor:pointer" onclick="showHoleDetail(' + r.holes[h].id + ')"><span class="tee-dot tee-' + r.holes[h].color + '" style="width:' + (is9Hole ? '10' : '8') + 'px;height:' + (is9Hole ? '10' : '8') + 'px;border-width:1px"></span><br>' + r.holes[h].name + '</th>';
+      html += '<th style="color:white;font-size:' + (is9Hole ? '14' : '12') + 'px;padding:' + (is9Hole ? '14px 8px' : '10px 4px') + ';cursor:pointer" onclick="showHoleDetail(' + r.holes[h].id + ')"><span class="tee-dot tee-' + r.holes[h].color + '" style="width:' + (is9Hole ? '10' : '8') + 'px;height:' + (is9Hole ? '10' : '8') + 'px;border-width:1px"></span><br>' + r.holes[h].name + '</th>';
     }
     html += '<th style="color:white;font-size:10px">TOT</th><th style="color:white;font-size:10px">+/-</th></tr>';
 
     // Par row
-    html += '<tr class="par-row"><td style="text-align:left;padding-left:8px;font-size:10px;font-weight:600">PAR</td>';
+    html += '<tr class="par-row"><td style="text-align:left;padding-left:10px;font-size:12px;font-weight:600">PAR</td>';
     var rowPar = 0;
-    for (var h = startH; h < endH; h++) { html += '<td style="font-size:11px">' + r.holes[h].par + '</td>'; rowPar += r.holes[h].par; }
+    for (var h = startH; h < endH; h++) { html += '<td style="font-size:13px;font-weight:600">' + r.holes[h].par + '</td>'; rowPar += r.holes[h].par; }
     html += '<td style="font-weight:700">' + rowPar + '</td><td></td></tr>';
 
     // Player rows
     for (var pi = 0; pi < r.players.length; pi++) {
-      html += '<tr><td style="text-align:left;padding-left:8px;font-size:12px;font-weight:600;white-space:nowrap">' + r.players[pi].name + '</td>';
+      html += '<tr><td style="text-align:left;padding-left:10px;font-size:14px;font-weight:600;white-space:nowrap">' + r.players[pi].name + '</td>';
       var rowTotal = 0;
       for (var hi = startH; hi < endH; hi++) {
         var val = r.scores[pi][hi];
-        var cellStyle = 'cursor:pointer;font-weight:700;font-size:' + (is9Hole ? '16' : '13') + 'px;' + (is9Hole ? 'padding:14px 10px;' : '');
+        var cellStyle = 'cursor:pointer;font-weight:700;font-size:' + (is9Hole ? '20' : '16') + 'px;' + (is9Hole ? 'padding:18px 12px;' : '');
         var display = '&middot;';
         var scoreClass = '';
         if (val !== null) {
@@ -1471,7 +1599,7 @@ function renderHorseMode() {
   var word = r.horseWord;
   
   var html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px">';
-  html += '<button class="btn btn-sm btn-secondary" onclick="exitScorecardMode()">&larr; Menu</button>';
+  html += '<button class="btn btn-sm btn-secondary" style="font-size:14px;padding:10px 14px" onclick="exitScorecardMode()">&larr; Menu</button>';
   html += '<div style="text-align:center;flex:1"><div style="font-family:var(--font-sans);font-weight:700;font-size:16px;color:var(--primary)">&#128052; H.O.R.S.E.</div></div>';
   html += '<button class="btn btn-sm btn-gold" onclick="finishHorse()">&#9989; End</button></div>';
 
@@ -1659,7 +1787,7 @@ function renderFreestyleMode() {
   var r = state.currentRound;
   
   var html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px">';
-  html += '<button class="btn btn-sm btn-secondary" onclick="exitScorecardMode()">&larr; Menu</button>';
+  html += '<button class="btn btn-sm btn-secondary" style="font-size:14px;padding:10px 14px" onclick="exitScorecardMode()">&larr; Menu</button>';
   html += '<div style="text-align:center;flex:1"><div style="font-family:var(--font-sans);font-weight:700;font-size:16px;color:var(--primary)">&#127919; Freestyle</div></div>';
   html += '<button class="btn btn-sm btn-gold" onclick="finishFreestyle()">&#9989; Done</button></div>';
 
@@ -1766,7 +1894,7 @@ function renderPickAsYouGo() {
   var r = state.currentRound;
   
   var html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px">';
-  html += '<button class="btn btn-sm btn-secondary" onclick="exitScorecardMode()">&larr; Menu</button>';
+  html += '<button class="btn btn-sm btn-secondary" style="font-size:14px;padding:10px 14px" onclick="exitScorecardMode()">&larr; Menu</button>';
   html += '<div style="text-align:center;flex:1"><div style="font-family:var(--font-sans);font-weight:700;font-size:16px;color:var(--primary)">' + (r.gameMode === 'match' ? '&#9876;&#65039; Match' : '&#9971; Stroke') + ' &mdash; Pick as You Go</div>';
   html += '<div style="font-size:11px;color:var(--text-muted)">Hole ' + (r.holes.length + 1) + '</div></div>';
   html += '<button class="btn btn-sm btn-gold" onclick="finishPickAsYouGo()">&#9989; Done</button></div>';
@@ -2037,7 +2165,7 @@ function recalcHandicaps() {
         if (round.results[rr].playerId === player.id) {
           var course = null;
           for (var ci = 0; ci < state.courses.length; ci++) { if (state.courses[ci].id === round.courseId) { course = state.courses[ci]; break; } }
-          var factor = course ? (course.avgDifficulty <= 2 ? 0.8 : course.avgDifficulty <= 3.5 ? 1.0 : 1.2) : 1.0;
+          var factor = course ? (course.avgDifficulty <= 4.2 ? 0.8 : course.avgDifficulty <= 4.2 ? 1.0 : 1.2) : 1.0;
           diffs.push((round.results[rr].total - round.coursePar) * factor);
           break;
         }
@@ -2276,7 +2404,7 @@ function renderHistoryPage() {
   for (var ri = 0; ri < state.rounds.length; ri++) {
     var round = state.rounds[ri];
     var diffFactor = 1.0;
-    if (round.courseDifficulty) { diffFactor = round.courseDifficulty <= 2 ? 0.85 : round.courseDifficulty <= 3.5 ? 1.0 : 1.15; }
+    if (round.courseDifficulty) { diffFactor = round.courseDifficulty <= 3.5 ? 0.85 : round.courseDifficulty <= 4.2 ? 1.0 : 1.15; }
     for (var rr = 0; rr < round.results.length; rr++) {
       var res = round.results[rr];
       var grossDiff = res.total - round.coursePar;
@@ -2367,7 +2495,7 @@ function renderAchievementsPage() {
   var playerAgg = {};
   for (var ri = 0; ri < state.rounds.length; ri++) {
     var round = state.rounds[ri];
-    var diffFactor = round.courseDifficulty ? (round.courseDifficulty <= 2 ? 0.85 : round.courseDifficulty <= 3.5 ? 1.0 : 1.15) : 1.0;
+    var diffFactor = round.courseDifficulty ? (round.courseDifficulty <= 3.5 ? 0.85 : round.courseDifficulty <= 4.2 ? 1.0 : 1.15) : 1.0;
     // Determine round winner
     var winnerTotal = 999;
     for (var rr = 0; rr < round.results.length; rr++) { if (round.results[rr].total < winnerTotal) winnerTotal = round.results[rr].total; }
@@ -2526,7 +2654,7 @@ function showPlayerDetail(playerId) {
     var result = null;
     for (var rr = 0; rr < round.results.length; rr++) { if (round.results[rr].playerId === playerId) { result = round.results[rr]; break; } }
     if (!result) continue;
-    var diffFactor = round.courseDifficulty ? (round.courseDifficulty <= 2 ? 0.85 : round.courseDifficulty <= 3.5 ? 1.0 : 1.15) : 1.0;
+    var diffFactor = round.courseDifficulty ? (round.courseDifficulty <= 3.5 ? 0.85 : round.courseDifficulty <= 4.2 ? 1.0 : 1.15) : 1.0;
     var grossDiff = result.total - round.coursePar;
     rounds.push({ total: result.total, coursePar: round.coursePar, grossDiff: grossDiff, netDiff: grossDiff * diffFactor, courseName: round.courseName, courseId: round.courseId, date: round.date });
     if (!courseCounts[round.courseName]) courseCounts[round.courseName] = 0;
@@ -2659,8 +2787,8 @@ function showCourseDetail(courseId) {
   if (!course) return;
 
   var holes = course.holeIds.map(function(id) { return ALL_HOLES[id]; });
-  var diffLabel = course.avgDifficulty <= 2 ? 'Easy' : course.avgDifficulty <= 3.5 ? 'Medium' : 'Hard';
-  var bclass = course.avgDifficulty <= 2 ? 'badge-easy' : course.avgDifficulty <= 3.5 ? 'badge-med' : 'badge-hard';
+  var diffLabel = course.avgDifficulty <= 4.2 ? 'Easy' : course.avgDifficulty <= 4.2 ? 'Medium' : 'Hard';
+  var bclass = course.avgDifficulty <= 4.2 ? 'badge-easy' : course.avgDifficulty <= 4.2 ? 'badge-med' : 'badge-hard';
 
   // Gather round stats for this course
   var courseRounds = state.rounds.filter(function(r) { return r.courseId === courseId; });
