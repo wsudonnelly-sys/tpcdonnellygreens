@@ -158,7 +158,7 @@ input, select { font-size: 16px !important; } /* prevents iOS zoom on focus */
 }
 
 /* Container */
-.container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+.container { max-width: 100%; margin: 0 auto; padding: 12px; }
 .page { display: none; }
 .page.active { display: block; }
 
@@ -671,6 +671,7 @@ select.input { cursor: pointer; }
   <div id="page-players" class="page"></div>
   <div id="page-history" class="page"></div>
   <div id="page-achievements" class="page"></div>
+<div id="page-layout" class="page"></div>
 </div>
 
 <script>
@@ -728,6 +729,12 @@ if (window.matchMedia) {
 
 initTheme();
 
+function getShortName(p) {
+  if (!p) return '';
+  return p.name + (p.lastName ? ' ' + p.lastName[0] + '.' : '');
+}
+
+
 // ===================== CONFIG =====================
 var TEE_COLORS = ['Red', 'Blue', 'Pink', 'Yellow', 'Purple', 'Orange', 'White', 'Black'];
 var FLAG_NUMBERS = [1, 2, 3, 4];
@@ -762,6 +769,8 @@ var state = {
   currentRound: null,
   selectedHoles: {},
   selectedPlayerIds: [],
+  playVariant: 'full',
+  courseFilter: 'all',
   holeOrder: [],
   courseSize: 9,
   targetDiff: null,
@@ -894,7 +903,8 @@ function renderNav() {
     { id: 'play', label: '&#127948;&#65039; Play' },
     { id: 'players', label: '&#128101; Golfers' },
     { id: 'history', label: '&#128202; History' },
-    { id: 'achievements', label: '&#127942; Records' }
+    { id: 'achievements', label: '&#127942; Records' },
+    { id: 'layout', label: '&#127966; Layout' }
   ];
   var html = '';
   for (var i = 0; i < pages.length; i++) {
@@ -919,6 +929,7 @@ function showPage(page) {
   if (page === 'players') { state._showAllGolfers = false; renderPlayersPage(); }
   if (page === 'history') renderHistoryPage();
   if (page === 'achievements') renderAchievementsPage();
+  if (page === 'layout') renderLayoutPage();
 }
 
 // ===================== COURSE BUILDER =====================
@@ -928,8 +939,15 @@ function renderCoursePage() {
   // Saved courses (filtered by difficulty)
   html += '<div class="card"><div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg> Choose a Course</div>';
   html += '<div class="card-subtitle">Select a course to play, or build a new one below.</div>';
-  html += '<div class="mb-12"><input class="input" placeholder="&#128269; Search courses..." oninput="filterCourses(this.value)" style="font-size:13px"></div>';
+  html += '<div class="mb-12"><input class="input" placeholder="&#128269; Search courses..." oninput="filterCourses(this.value)" style="font-size:16px" inputmode="search" enterkeyhint="search" autocomplete="off"></div>';
+  html += '<div style="display:flex;gap:4px;margin-bottom:12px">';
+  html += '<button class="btn btn-sm ' + (state.courseFilter === 'all' ? 'btn-primary' : 'btn-secondary') + '" onclick="setCourseFilter(\'all\')">All</button>';
+  html += '<button class="btn btn-sm ' + (state.courseFilter === '9' ? 'btn-primary' : 'btn-secondary') + '" onclick="setCourseFilter(\'9\')">9 Holes</button>';
+  html += '<button class="btn btn-sm ' + (state.courseFilter === '18' ? 'btn-primary' : 'btn-secondary') + '" onclick="setCourseFilter(\'18\')">18 Holes</button>';
+  html += '</div>';
   var filteredCourses = state.courses.filter(function(c) {
+    if (state.courseFilter === '9' && c.holeIds.length > 9) return false;
+    if (state.courseFilter === '18' && c.holeIds.length < 18) return false;
     if (!state.targetDiff) return true;
     if (state.targetDiff === "easy") return c.avgDifficulty <= 3.5;
     if (state.targetDiff === "medium") return c.avgDifficulty > 3.5 && c.avgDifficulty <= 4.2;
@@ -959,19 +977,18 @@ function renderCoursePage() {
   }
   html += '</div>';
 
+  // Course Builder (temporary use - no saving)
   html += '<div class="card">';
-  html += '<div class="card-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l6 3-6 3"/><path d="M12 2v13"/><circle cx="12" cy="18" r="3" fill="none"/></svg> Course Builder</div>';
-  html += '<div class="card-subtitle">8 tees &times; 4 flags = 32 possible holes. Build your layout manually or let the course generator surprise you.</div>';
+  html += '<div class="card-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l6 3-6 3"/><path d="M12 2v13"/><circle cx="12" cy="18" r="3" fill="none"/></svg> Build a Round</div>';
+  html += '<div class="card-subtitle">Pick holes for a one-time round. Select manually or generate a random layout.</div>';
 
-  html += '<div class="flex gap-16 flex-wrap mb-16">';
-  html += '<div style="flex:1;min-width:180px"><label class="label">Course Name</label><input class="input" id="course-name" placeholder="e.g. The Back Nine"></div>';
-  html += '<div><label class="label">Holes</label><div style="display:flex;align-items:center;gap:4px">';
+  html += '<div style="margin-bottom:12px"><div><label class="label">Holes</label><div style="display:flex;align-items:center;gap:4px">';
   html += '<button class="btn btn-sm ' + (state.courseSize === 9 ? 'btn-primary' : 'btn-secondary') + '" onclick="setCourseSize(9)">9</button>';
   html += '<button class="btn btn-sm ' + (state.courseSize === 18 ? 'btn-primary' : 'btn-secondary') + '" onclick="setCourseSize(18)">18</button>';
   html += '</div></div></div>';
 
   html += '<label class="label">Difficulty Target</label><div class="diff-selector">';
-  var targets = [['all','All'],['easy','&#128994; Easy'],['medium','&#128992; Medium'],['hard','&#128308; Hard']];
+  var targets = [['all','All'],['easy','Easy'],['medium','Medium'],['hard','Hard']];
   for (var t = 0; t < targets.length; t++) {
     var act = state.targetDiff === targets[t][0] || (state.targetDiff === null && targets[t][0] === 'all') ? ' active' : '';
     html += '<button class="diff-btn' + act + '" onclick="setTarget(\'' + targets[t][0] + '\')">' + targets[t][1] + '</button>';
@@ -998,35 +1015,39 @@ function renderCoursePage() {
     var totalPar = 0, totalDiff = 0;
     for (var s = 0; s < selIds.length; s++) { var sh = ALL_HOLES[parseInt(selIds[s])]; totalPar += sh.par; totalDiff += sh.difficulty; }
     var avgDiff = totalDiff / selIds.length;
-    var diffLabel = avgDiff <= 2 ? 'Easy' : avgDiff <= 3.5 ? 'Medium' : 'Hard';
+    var diffLabel = avgDiff <= 3.5 ? 'Easy' : avgDiff <= 4.2 ? 'Medium' : 'Hard';
     html += '<div class="course-summary">';
     html += '<div class="cs-item"><div class="val">' + selIds.length + '/' + state.courseSize + '</div><div class="lbl">Holes</div></div>';
     html += '<div class="cs-item"><div class="val">' + totalPar + '</div><div class="lbl">Total Par</div></div>';
     html += '<div class="cs-item"><div class="val">' + diffLabel + '</div><div class="lbl">Difficulty</div></div>';
     html += '<div class="cs-item"><div class="val">' + avgDiff.toFixed(1) + '</div><div class="lbl">Rating</div></div></div>';
-    // Reorder section - shows running list as holes are picked
-    if (state.holeOrder.length > 0) {
-      html += '<div class="mt-12 mb-12"><label class="label">Hole Order (' + state.holeOrder.length + '/' + state.courseSize + ') <span style="font-weight:400;font-size:11px;color:var(--text-muted)">(use arrows to reorder)</span></label>';
-      html += '<div style="display:flex;flex-direction:column;gap:4px">';
-      for (var ho = 0; ho < state.holeOrder.length; ho++) {
-        var holeData = ALL_HOLES[state.holeOrder[ho]];
-        html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">';
-        html += '<span style="color:var(--text-muted);font-size:12px;font-weight:700;width:20px">' + (ho+1) + '</span>';
-        html += '<span class="tee-dot tee-' + holeData.color + '"></span>';
-        html += '<span style="font-weight:600;color:' + getTeeCSSColor(holeData.color) + '">' + holeData.flag + '</span>';
-        html += '<span style="font-size:11px;color:var(--text-muted);margin-left:4px">Par ' + holeData.par + '</span>';
-        html += '<span style="flex:1"></span>';
-        if (ho > 0) html += '<button class="btn btn-sm btn-secondary" style="padding:4px 8px;min-height:32px" onclick="moveHoleUp(' + ho + ')">&#9650;</button>';
-        if (ho < state.holeOrder.length - 1) html += '<button class="btn btn-sm btn-secondary" style="padding:4px 8px;min-height:32px" onclick="moveHoleDown(' + ho + ')">&#9660;</button>';
-        html += '</div>';
-      }
-      html += '</div></div>';
-      if (state.holeOrder.length >= state.courseSize) {
-        html += '<button class="btn btn-gold mt-12" onclick="saveCourse()">&#128190; Save Course</button>';
-      }
+  }
+
+  // Hole order (running list)
+  if (state.holeOrder.length > 0) {
+    html += '<div class="mt-12 mb-12"><label class="label">Hole Order (' + state.holeOrder.length + '/' + state.courseSize + ') <span style="font-weight:400;font-size:11px;color:var(--text-muted)">(use arrows to reorder)</span></label>';
+    html += '<div style="display:flex;flex-direction:column;gap:4px">';
+    for (var ho = 0; ho < state.holeOrder.length; ho++) {
+      var holeData = ALL_HOLES[state.holeOrder[ho]];
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">';
+      html += '<span style="color:var(--text-muted);font-size:12px;font-weight:700;width:20px">' + (ho+1) + '</span>';
+      html += '<span class="tee-dot tee-' + holeData.color + '"></span>';
+      html += '<span style="font-weight:600;color:' + getTeeCSSColor(holeData.color) + '">' + holeData.flag + '</span>';
+      html += '<span style="font-size:11px;color:var(--text-muted);margin-left:4px">Par ' + holeData.par + '</span>';
+      html += '<span style="flex:1"></span>';
+      if (ho > 0) html += '<button class="btn btn-sm btn-secondary" style="padding:4px 8px;min-height:32px" onclick="moveHoleUp(' + ho + ')">&#9650;</button>';
+      if (ho < state.holeOrder.length - 1) html += '<button class="btn btn-sm btn-secondary" style="padding:4px 8px;min-height:32px" onclick="moveHoleDown(' + ho + ')">&#9660;</button>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+    if (state.holeOrder.length >= state.courseSize) {
+      html += '<button class="btn btn-gold mt-12" onclick="playTempCourse()">&#9654;&#65039; Play This Round</button>';
     }
   }
+
   html += '</div>';
+
+
   document.getElementById('page-course').innerHTML = html;
 }
 
@@ -1066,6 +1087,18 @@ function randomCourse() {
 }
 function clearSelection() { state.selectedHoles = {}; state.holeOrder = []; renderCoursePage(); }
 
+function playTempCourse() {
+  var holeIds = state.holeOrder.length > 0 ? state.holeOrder.slice() : Object.keys(state.selectedHoles).map(Number);
+  var totalPar = 0, totalDiff = 0;
+  for (var i = 0; i < holeIds.length; i++) { totalPar += ALL_HOLES[holeIds[i]].par; totalDiff += ALL_HOLES[holeIds[i]].difficulty; }
+  state.selectedCourse = { id: -1, name: 'Custom Round', holeIds: holeIds, totalPar: totalPar, avgDifficulty: totalDiff / holeIds.length };
+  state.playVariant = 'full';
+  state.selectedHoles = {};
+  state.holeOrder = [];
+  showPage('play');
+}
+
+
 function moveHoleUp(idx) {
   if (idx <= 0) return;
   var temp = state.holeOrder[idx - 1];
@@ -1100,6 +1133,12 @@ function selectCourse(id) {
   for (var i = 0; i < state.courses.length; i++) {
     if (state.courses[i].id === id) { state.selectedCourse = state.courses[i]; break; }
   }
+  renderCoursePage();
+}
+
+
+function setCourseFilter(f) {
+  state.courseFilter = f;
   renderCoursePage();
 }
 
@@ -1146,42 +1185,49 @@ function renderPlayPage() {
       html += '<div style="font-size:13px;color:var(--text-secondary)">Players choose each hole in sequence. Select tee/flag before each putt.</div></div>';
     } else if (state.selectedCourse) {
       var sc = state.selectedCourse;
-      var scDl = sc.avgDifficulty <= 4.2 ? 'Easy' : sc.avgDifficulty <= 4.2 ? 'Medium' : 'Hard';
-      var scBclass = sc.avgDifficulty <= 4.2 ? 'badge-easy' : sc.avgDifficulty <= 4.2 ? 'badge-med' : 'badge-hard';
+      var scDl = sc.avgDifficulty <= 3.5 ? 'Easy' : sc.avgDifficulty <= 4.2 ? 'Medium' : 'Hard';
+      var scBclass = sc.avgDifficulty <= 3.5 ? 'badge-easy' : sc.avgDifficulty <= 4.2 ? 'badge-med' : 'badge-hard';
       html += '<div class="player-row" style="border:2px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.05)">';
       html += '<div style="flex:1"><div style="font-weight:700;font-size:15px">' + sc.name + '</div>';
       html += '<div style="font-size:12px;color:var(--text-muted)">' + sc.holeIds.length + ' holes &middot; Par ' + sc.totalPar + '</div></div>';
       html += '<span class="badge ' + scBclass + '">' + scDl + '</span></div>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">Change on the Course tab.</div>';
+      if (sc.holeIds.length >= 18) {
+        html += '<div style="display:flex;gap:6px;margin-top:8px">';
+        html += '<button class="btn btn-sm ' + (state.playVariant === "full" || !state.playVariant ? 'btn-primary' : 'btn-secondary') + '" onclick="setPlayVariant(\'full\')">Full 18</button>';
+        html += '<button class="btn btn-sm ' + (state.playVariant === "front" ? 'btn-primary' : 'btn-secondary') + '" onclick="setPlayVariant(\'front\')">Front 9</button>';
+        html += '<button class="btn btn-sm ' + (state.playVariant === "back" ? 'btn-primary' : 'btn-secondary') + '" onclick="setPlayVariant(\'back\')">Back 9</button>';
+        html += '</div>';
+      }
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;cursor:pointer" onclick="showPage(\'course\')">&#9971; Change course</div>';
     } else {
-      // Quick-select from saved courses
-      html += '<div style="margin-top:4px">';
-      for (var ci = 0; ci < state.courses.length; ci++) {
-        var crs = state.courses[ci];
-        var cBclass = crs.avgDifficulty <= 4.2 ? 'badge-easy' : crs.avgDifficulty <= 4.2 ? 'badge-med' : 'badge-hard';
-        var cBlabel = crs.avgDifficulty <= 4.2 ? 'Easy' : crs.avgDifficulty <= 4.2 ? 'Medium' : 'Hard';
-        html += '<div class="player-row" style="cursor:pointer" onclick="quickSelectCourse(' + crs.id + ')">';
-        html += '<div style="flex:1"><div style="font-weight:600">' + crs.name + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted)">' + crs.holeIds.length + ' holes &middot; Par ' + crs.totalPar + '</div></div>';
-        html += '<span class="badge ' + cBclass + '">' + cBlabel + '</span></div>';
-      }
-      if (state.courses.length === 0) {
-        html += '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:13px">No courses yet. <span style="cursor:pointer;color:var(--primary);text-decoration:underline" onclick="showPage(\'course\')">Build one</span></div>';
-      }
-      html += '</div>';
+      html += '<div style="padding:16px;text-align:center;background:rgba(20,45,25,0.5);border-radius:var(--radius-sm);border:1px dashed var(--border)">';
+      html += '<div style="color:var(--text-muted);font-size:13px">No course selected</div>';
+      html += '<button class="btn btn-sm btn-primary" style="margin-top:8px" onclick="showPage(\'course\')">&#9971; Choose a Course</button></div>';
     }
     html += '</div>';
   }
 
   html += '<div class="mb-16"><label class="label">Players</label>';
-  for (var p = 0; p < state.players.length; p++) {
-    var pl = state.players[p];
-    var isChecked = state.selectedPlayerIds.indexOf(pl.id) >= 0 ? ' checked' : '';
-    html += '<label class="player-row" style="cursor:pointer"><input type="checkbox" class="play-player-cb" value="' + pl.id + '"' + isChecked + ' onchange="togglePlayerSelection(' + pl.id + ')" style="accent-color:var(--primary);width:18px;height:18px">';
-    html += '<span style="flex:1;font-weight:500">' + pl.name + '</span>';
-    html += '<span style="font-family:var(--font-mono);color:var(--text-secondary);font-size:13px">' + (pl.handicap !== null ? 'HC ' + pl.handicap : '--') + '</span></label>';
+  // Selected players shown as chips
+  if (state.selectedPlayerIds.length > 0) {
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">';
+    for (var sp = 0; sp < state.selectedPlayerIds.length; sp++) {
+      var selP = null;
+      for (var spi = 0; spi < state.players.length; spi++) { if (state.players[spi].id === state.selectedPlayerIds[sp]) { selP = state.players[spi]; break; } }
+      if (selP) {
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:20px">';
+        html += '<span style="font-weight:600;font-size:13px">' + selP.name + (selP.lastName ? ' ' + selP.lastName[0] + '.' : '') + '</span>';
+        html += '<span style="cursor:pointer;font-size:16px;color:var(--text-muted);line-height:1" onclick="removePlayerFromRound(' + selP.id + ')">&times;</span>';
+        html += '</div>';
+      }
+    }
+    html += '</div>';
   }
-  html += '</div>';
+  // Autocomplete search to add players
+  html += '<div style="position:relative">';
+  html += '<input class="input" id="play-player-search" placeholder="&#128269; Add a golfer..." oninput="showPlayPlayerSuggestions(this.value)" style="font-size:16px" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off">';
+  html += '<div id="play-player-suggestions" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:100;background:var(--surface-2);border:1px solid var(--border);border-radius:0 0 12px 12px;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.3)"></div>';
+  html += '</div></div>';
 
   html += '<div class="mb-16"><label class="label">Game Mode</label>';
   html += '<div style="display:flex;gap:4px;flex-wrap:wrap">';
@@ -1216,6 +1262,60 @@ function renderPlayPage() {
 function setGameMode(mode) { state.gameMode = mode; renderPlayPage(); }
 function setPickMode(val) { state.pickAsYouGo = val; renderPlayPage(); }
 
+
+function showPlayPlayerSuggestions(query) {
+  var container = document.getElementById('play-player-suggestions');
+  if (!container) return;
+  if (!query || query.length === 0) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  query = query.toLowerCase();
+  var matches = state.players.filter(function(p) {
+    // Don't show already-selected players
+    if (state.selectedPlayerIds.indexOf(p.id) >= 0) return false;
+    var fullName = p.name + (p.lastName ? ' ' + p.lastName : '');
+    return fullName.toLowerCase().indexOf(query) === 0 || 
+           p.name.toLowerCase().indexOf(query) === 0 ||
+           (p.lastName && p.lastName.toLowerCase().indexOf(query) === 0);
+  });
+  
+  if (matches.length === 0) {
+    container.style.display = 'block';
+    container.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:13px">No matching golfers</div>';
+    return;
+  }
+  
+  var html = '';
+  for (var i = 0; i < matches.length; i++) {
+    var p = matches[i];
+    var fullName = p.name + (p.lastName ? ' ' + p.lastName : '');
+    html += '<div class="player-row" style="cursor:pointer;margin:0;border-radius:0;border-bottom:1px solid var(--border-light)" onclick="addPlayerToRound(' + p.id + ')">';
+    html += '<div class="player-avatar" style="width:32px;height:32px;font-size:14px">' + p.name[0].toUpperCase() + '</div>';
+    html += '<div style="flex:1"><div style="font-weight:600;font-size:14px">' + fullName + '</div></div>';
+    html += '</div>';
+  }
+  container.innerHTML = html;
+  container.style.display = 'block';
+}
+
+function addPlayerToRound(id) {
+  if (state.selectedPlayerIds.indexOf(id) < 0) {
+    state.selectedPlayerIds.push(id);
+  }
+  var input = document.getElementById('play-player-search');
+  if (input) input.value = '';
+  var container = document.getElementById('play-player-suggestions');
+  if (container) { container.style.display = 'none'; container.innerHTML = ''; }
+  renderPlayPage();
+}
+
+function removePlayerFromRound(id) {
+  state.selectedPlayerIds = state.selectedPlayerIds.filter(function(pid) { return pid !== id; });
+  renderPlayPage();
+}
+
 function togglePlayerSelection(id) {
   var idx = state.selectedPlayerIds.indexOf(id);
   if (idx >= 0) {
@@ -1225,6 +1325,25 @@ function togglePlayerSelection(id) {
   }
 }
 
+
+
+
+function setPlayVariant(v) {
+  state.playVariant = v;
+  renderPlayPage();
+}
+
+function quickSelectHalf(courseId, half) {
+  var original = null;
+  for (var i = 0; i < state.courses.length; i++) { if (state.courses[i].id == courseId) { original = state.courses[i]; break; } }
+  if (!original || original.holeIds.length < 18) return;
+  var holeIds = half === 'front' ? original.holeIds.slice(0, 9) : original.holeIds.slice(9, 18);
+  var totalPar = 0, totalDiff = 0;
+  for (var i = 0; i < holeIds.length; i++) { totalPar += ALL_HOLES[holeIds[i]].par; totalDiff += ALL_HOLES[holeIds[i]].difficulty; }
+  var label = half === 'front' ? 'Front 9' : 'Back 9';
+  state.selectedCourse = { id: -1, name: original.name + ' (' + label + ')', holeIds: holeIds, totalPar: totalPar, avgDifficulty: totalDiff / holeIds.length };
+  renderPlayPage();
+}
 
 function quickSelectCourse(id) {
   for (var i = 0; i < state.courses.length; i++) {
@@ -1242,6 +1361,14 @@ function startRound() {
   // Pick-as-you-go doesn't need a pre-selected course
   if (state.pickAsYouGo) { startPickAsYouGoRound(); return; }
   if (!course) return;
+  // Apply front/back variant for 18-hole courses
+  if (course.holeIds.length >= 18 && state.playVariant && state.playVariant !== 'full') {
+    var halfIds = state.playVariant === 'front' ? course.holeIds.slice(0, 9) : course.holeIds.slice(9, 18);
+    var halfPar = 0, halfDiff = 0;
+    for (var hi = 0; hi < halfIds.length; hi++) { halfPar += ALL_HOLES[halfIds[hi]].par; halfDiff += ALL_HOLES[halfIds[hi]].difficulty; }
+    var halfLabel = state.playVariant === 'front' ? 'Front 9' : 'Back 9';
+    course = { id: course.id, name: course.name + ' (' + halfLabel + ')', holeIds: halfIds, totalPar: halfPar, avgDifficulty: halfDiff / halfIds.length };
+  }
   if (state.selectedPlayerIds.length === 0) return;
   var players = state.players.filter(function(p) { return state.selectedPlayerIds.indexOf(p.id) >= 0; });
   var scores = [];
@@ -1441,7 +1568,7 @@ function renderScorecard() {
 
     // Player rows
     for (var pi = 0; pi < r.players.length; pi++) {
-      html += '<tr><td style="text-align:left;padding-left:10px;font-size:14px;font-weight:600;white-space:nowrap">' + r.players[pi].name + '</td>';
+      html += '<tr><td style="text-align:left;padding-left:10px;font-size:14px;font-weight:600;white-space:nowrap">' + getShortName(r.players[pi]) + '</td>';
       var rowTotal = 0;
       for (var hi = startH; hi < endH; hi++) {
         var val = r.scores[pi][hi];
@@ -1995,7 +2122,7 @@ function finishPickAsYouGo() {
     for (var pi = 0; pi < r.players.length; pi++) {
       var total = 0;
       for (var s = 0; s < r.scores[pi].length; s++) total += (r.scores[pi][s] || 0);
-      results.push({ playerId: r.players[pi].id, playerName: r.players[pi].name, scores: r.scores[pi].slice(), total: total });
+      results.push({ playerId: r.players[pi].id, playerName: getShortName(r.players[pi]), scores: r.scores[pi].slice(), total: total });
     }
     state.rounds.push({ id: Date.now(), courseId: course.id, courseName: course.name, coursePar: totalPar, courseDifficulty: course.avgDifficulty, date: new Date().toISOString(), results: results });
     recalcHandicaps();
@@ -2027,7 +2154,7 @@ function finishRound() {
   for (var pi = 0; pi < r.players.length; pi++) {
     var total = 0;
     for (var s = 0; s < r.scores[pi].length; s++) total += (r.scores[pi][s] || 0);
-    results.push({ playerId: r.players[pi].id, playerName: r.players[pi].name, scores: r.scores[pi].slice(), total: total });
+    results.push({ playerId: r.players[pi].id, playerName: getShortName(r.players[pi]), scores: r.scores[pi].slice(), total: total });
   }
   // Store pending round for summary screen
   state.pendingRound = { id: Date.now(), courseId: r.courseId, courseName: r.courseName, coursePar: course.totalPar, courseDifficulty: course.avgDifficulty, date: new Date().toISOString(), isFake: true, results: results };
@@ -2184,61 +2311,9 @@ function renderPlayersPage() {
   html += '<div class="card-subtitle">Tap a golfer for full stats and badges.<br><span style="color:var(--warning);font-size:11px">&#9888; Prototype: Data resets if the page reloads. In the real app, all data persists via SQLite.</span></div>';
   html += '<div class="flex gap-8 mb-16"><input class="input" id="new-player" placeholder="Add a golfer..." style="flex:1;font-size:16px" inputmode="text" enterkeyhint="done" autocomplete="off" autocorrect="off">';
   html += '<button class="btn btn-primary" onclick="addPlayer()">+ Add</button></div>';
-  html += '<div class="mb-12"><input class="input" id="player-search" placeholder="&#128269; Search golfers..." oninput="filterPlayers(this.value)" style="font-size:16px" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off"></div>';
-
-  // Sort players by most recent round (active players first)
-  var sortedPlayers = state.players.slice().sort(function(a, b) {
-    var aLast = 0, bLast = 0;
-    for (var ri = 0; ri < state.rounds.length; ri++) {
-      for (var rr = 0; rr < state.rounds[ri].results.length; rr++) {
-        if (state.rounds[ri].results[rr].playerId === a.id) aLast = Math.max(aLast, state.rounds[ri].id);
-        if (state.rounds[ri].results[rr].playerId === b.id) bLast = Math.max(bLast, state.rounds[ri].id);
-      }
-    }
-    return bLast - aLast;
-  });
-
-  // Limit to 8 unless searching
-  var searchVal = (document.getElementById('player-search') && document.getElementById('player-search').value) || '';
-  var showAll = state._showAllGolfers || searchVal.length > 0;
-  var displayPlayers = showAll ? sortedPlayers : sortedPlayers.slice(0, 8);
-  var hiddenCount = sortedPlayers.length - 8;
-
-  for (var i = 0; i < displayPlayers.length; i++) {
-    var p = displayPlayers[i];
-    var stats = getPlayerStats(p.id);
-    var rc = stats.roundsPlayed;
-    // Count badges
-    var badgeCount = 0;
-    for (var ai = 0; ai < ACHIEVEMENTS.length; ai++) { if (ACHIEVEMENTS[ai].check(stats)) badgeCount++; }
-    // Win count
-    var wins = 0;
-    for (var ri = 0; ri < state.rounds.length; ri++) {
-      var round = state.rounds[ri];
-      var myResult = null; var isBest = true;
-      for (var rr = 0; rr < round.results.length; rr++) {
-        if (round.results[rr].playerId === p.id) myResult = round.results[rr];
-      }
-      if (myResult) {
-        for (var rr = 0; rr < round.results.length; rr++) {
-          if (round.results[rr].playerId !== p.id && round.results[rr].total < myResult.total) { isBest = false; break; }
-        }
-        if (isBest) wins++;
-      }
-    }
-    var winPct = rc > 0 ? Math.round((wins / rc) * 100) : 0;
-
-    html += '<div class="player-row" style="cursor:pointer;flex-wrap:wrap" onclick="showPlayerDetail(' + p.id + ')">';
-    html += '<div class="player-avatar">' + p.name[0].toUpperCase() + '</div>';
-    html += '<div style="flex:1;min-width:120px"><div style="font-weight:600;font-size:15px">' + p.name + (p.lastName ? ' ' + p.lastName : '') + '</div>';
-    html += '<div style="font-size:11px;color:var(--text-muted)">' + rc + ' rounds &middot; ' + wins + ' wins (' + winPct + '%) &middot; ' + badgeCount + ' badges</div></div>';
-    html += '<div style="text-align:right"><div style="font-family:var(--font-mono);font-weight:700;color:var(--primary);font-size:14px">' + (p.handicap !== null ? 'HC ' + p.handicap : '--') + '</div>';
-    html += '<div style="font-size:10px;color:var(--text-muted)">Handicap</div></div>';
-    html += '</div>';
-  }
-  if (!showAll && hiddenCount > 0) {
-    html += '<div style="text-align:center;padding:12px"><button class="btn btn-sm btn-secondary" onclick="state._showAllGolfers=true;renderPlayersPage()">Show all ' + sortedPlayers.length + ' golfers</button></div>';
-  }
+  html += '<div class="mb-12" style="position:relative"><input class="input" id="player-search" placeholder="&#128269; Search for a golfer..." oninput="showPlayerSuggestions(this.value)" style="font-size:16px" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off">';
+  html += '<div id="player-suggestions" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:100;background:var(--surface-2);border:1px solid var(--border);border-radius:0 0 12px 12px;max-height:300px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.3)"></div></div>';
+  html += '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">' + state.players.length + ' golfers registered. Start typing to find one.</div>';
   html += '</div>';
 
   html += '<div class="card"><div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg> Handicap System</div>';
@@ -3031,30 +3106,43 @@ function findRoundIndex(playerId, grossDiff, courseName) {
 }
 
 
-function filterPlayers(query) {
-  // When searching, show all players that match (not limited to 8)
-  var rows = document.querySelectorAll('#page-players .player-row');
-  if (!query) {
-    // No search - just show/hide based on the current rendered set
-    for (var i = 0; i < rows.length; i++) rows[i].style.display = '';
+
+function showPlayerSuggestions(query) {
+  var container = document.getElementById('player-suggestions');
+  if (!container) return;
+  if (!query || query.length === 0) {
+    container.style.display = 'none';
+    container.innerHTML = '';
     return;
   }
   query = query.toLowerCase();
-  for (var i = 0; i < rows.length; i++) {
-    var name = rows[i].textContent.toLowerCase();
-    rows[i].style.display = name.indexOf(query) >= 0 ? '' : 'none';
+  var matches = state.players.filter(function(p) {
+    var fullName = p.name + (p.lastName ? ' ' + p.lastName : '');
+    return fullName.toLowerCase().indexOf(query) === 0 || 
+           p.name.toLowerCase().indexOf(query) === 0 ||
+           (p.lastName && p.lastName.toLowerCase().indexOf(query) === 0);
+  });
+  
+  if (matches.length === 0) {
+    container.style.display = 'block';
+    container.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:13px">No golfers found</div>';
+    return;
   }
-  // If searching and players are hidden by the 8-limit, re-render to show all
-  if (query.length > 0 && !state._showAllGolfers) {
-    state._showAllGolfers = true;
-    renderPlayersPage();
-    // Re-set the search value and re-filter after render
-    setTimeout(function() {
-      var el = document.getElementById('player-search');
-      if (el) { el.value = query; el.focus(); filterPlayers(query); }
-    }, 10);
+  
+  var html = '';
+  for (var i = 0; i < matches.length; i++) {
+    var p = matches[i];
+    var fullName = p.name + (p.lastName ? ' ' + p.lastName : '');
+    html += '<div class="player-row" style="cursor:pointer;margin:0;border-radius:0;border-bottom:1px solid var(--border-light)" onclick="document.getElementById(\'player-search\').value=\'\';document.getElementById(\'player-suggestions\').style.display=\'none\';showPlayerDetail(' + p.id + ')">';
+    html += '<div class="player-avatar" style="width:32px;height:32px;font-size:14px">' + p.name[0].toUpperCase() + '</div>';
+    html += '<div style="flex:1"><div style="font-weight:600;font-size:14px">' + fullName + '</div></div>';
+    html += '</div>';
   }
+  container.innerHTML = html;
+  container.style.display = 'block';
 }
+
+function filterPlayers(query) { showPlayerSuggestions(query); }
 
 function filterCourses(query) {
   var rows = document.querySelectorAll('#page-course .player-row');
@@ -3088,6 +3176,132 @@ loadState();
 if (!state.selectedCourse && state.courses.length > 0) state.selectedCourse = state.courses[0];
 renderNav();
 renderCoursePage();
+
+// ===================== LAYOUT PAGE =====================
+function renderLayoutPage() {
+  var html = '<div class="card" style="text-align:center;padding:16px">';
+  html += '<div class="card-title" style="justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/></svg> Course Map</div>';
+  html += '<div class="card-subtitle" style="text-align:center">TPC Donnelly Greens putting surface</div>';
+  html += '<canvas id="layout-canvas" width="750" height="500" style="max-width:100%;border-radius:8px;margin-top:12px;background:white"></canvas>';
+  html += '</div>';
+  document.getElementById('page-layout').innerHTML = html;
+  
+  // Draw the green map
+  setTimeout(function() { drawLayoutMap(); }, 50);
+}
+
+function drawLayoutMap() {
+  var canvas = document.getElementById('layout-canvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var W = 750, H = 500;
+  
+  // Green map data
+  var mapData = {"strokes":[{"type":"shape","layer":"fringe","path":[[95,273],[100,242],[109,216],[124,196],[143,180],[166,168],[194,160],[226,158],[260,157],[294,155],[327,153],[360,152],[394,151],[428,150],[462,149],[496,149],[531,149],[562,152],[590,159],[612,172],[631,189],[643,211],[654,235],[659,266],[657,298],[653,327],[644,353],[629,374],[609,388],[587,400],[561,410],[532,416],[501,419],[468,422],[434,424],[399,425],[364,425],[331,423],[298,421],[264,420],[229,420],[197,417],[165,413],[139,404],[121,388],[106,368],[97,341],[95,307]]},{"type":"shape","layer":"surface","path":[[123,273],[129,247],[139,227],[155,211],[173,199],[198,192],[226,192],[254,195],[280,200],[308,201],[336,198],[363,193],[387,186],[411,178],[436,173],[463,170],[493,169],[522,169],[550,172],[574,179],[595,190],[609,206],[621,225],[631,247],[636,272],[633,300],[628,326],[618,347],[604,364],[585,376],[564,387],[539,393],[512,397],[482,397],[452,395],[423,393],[394,393],[363,392],[333,391],[303,390],[273,390],[242,390],[212,390],[183,386],[159,380],[140,369],[127,350],[123,313]]}],"flags":[{"x":560,"y":228},{"x":563,"y":336},{"x":390,"y":358},{"x":197,"y":282}],"tees":[{"x":360,"y":248},{"x":477,"y":201},{"x":611,"y":249},{"x":609,"y":299},{"x":504,"y":367},{"x":276,"y":353},{"x":174,"y":333},{"x":161,"y":255}]};
+  
+  var TEE_COLS = ['#FFD700','#ff8cc8','#3498db','#888','#e74c3c','#e67e22','#7b2d8b','#111'];
+  var TEE_NAMES = ['Gold','Pink','Blue','White','Red','Orange','Purple','Black'];
+  var FLAG_NUMS = [1,2,3,4];
+  
+  // White background
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+  
+  // Title
+  ctx.save();
+  ctx.font = 'italic bold 28px Georgia, serif';
+  ctx.fillStyle = '#4CBB17';
+  ctx.textAlign = 'center';
+  ctx.fillText('TPC Donnelly Greens', 386, 40);
+  ctx.restore();
+  
+  // Draw shamrocks
+  function drawShamrock(sx, sy, scale) {
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#4CBB17';
+    ctx.beginPath(); ctx.moveTo(0, -5);
+    ctx.bezierCurveTo(-15, -25, -30, -15, -20, 0);
+    ctx.bezierCurveTo(-30, 15, -15, 20, 0, 5); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0, -5);
+    ctx.bezierCurveTo(15, -25, 30, -15, 20, 0);
+    ctx.bezierCurveTo(30, 15, 15, 20, 0, 5); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-5, 0);
+    ctx.bezierCurveTo(-20, -20, -5, -35, 0, -22);
+    ctx.bezierCurveTo(5, -35, 20, -20, 5, 0); ctx.fill();
+    ctx.strokeStyle = '#2a7a2a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, 5); ctx.quadraticCurveTo(3, 18, 1, 28); ctx.stroke();
+    ctx.restore();
+  }
+  drawShamrock(326, 68, 0.55);
+  drawShamrock(386, 68, 0.55);
+  drawShamrock(446, 68, 0.55);
+  
+  // Shift everything down to make room for title
+  var offsetY = 50;
+  
+  // Draw shapes (fringe first, then surface)
+  for (var si = 0; si < mapData.strokes.length; si++) {
+    var stroke = mapData.strokes[si];
+    ctx.beginPath();
+    if (stroke.path.length > 0) {
+      ctx.moveTo(stroke.path[0][0], stroke.path[0][1] + offsetY);
+      for (var pi = 1; pi < stroke.path.length; pi++) {
+        ctx.lineTo(stroke.path[pi][0], stroke.path[pi][1] + offsetY);
+      }
+      ctx.closePath();
+    }
+    ctx.fillStyle = stroke.layer === 'fringe' ? '#228B22' : '#4CBB17';
+    ctx.fill();
+  }
+  
+  // Draw flags (cups with flagsticks)
+  for (var fi = 0; fi < mapData.flags.length; fi++) {
+    var f = mapData.flags[fi];
+    var fx = f.x, fy = f.y + offsetY;
+    // Cup (white circle)
+    ctx.beginPath(); ctx.arc(fx, fy, 6, 0, Math.PI*2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+    // Flagstick
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx, fy - 50);
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Flag
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(fx, fy - 50, 20, 12);
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 0.5;
+    ctx.strokeRect(fx, fy - 50, 20, 12);
+    // Number on flag
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillStyle = '#333'; ctx.textAlign = 'center';
+    ctx.fillText(fi + 1, fx + 10, fy - 41);
+  }
+  
+  // Draw tees (small colored dots)
+  for (var ti = 0; ti < mapData.tees.length; ti++) {
+    var t = mapData.tees[ti];
+    var tx = t.x, ty = t.y + offsetY;
+    ctx.beginPath(); ctx.arc(tx, ty, 5, 0, Math.PI*2);
+    ctx.fillStyle = TEE_COLS[ti]; ctx.fill();
+  }
+  
+  // Legend at bottom
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'left';
+  var lx = 80;
+  ctx.fillStyle = '#666';
+  ctx.fillText('TEES:', lx, H - 15);
+  lx += 40;
+  for (var li = 0; li < TEE_NAMES.length; li++) {
+    ctx.beginPath(); ctx.arc(lx, H - 17, 4, 0, Math.PI*2);
+    ctx.fillStyle = TEE_COLS[li]; ctx.fill();
+    ctx.fillStyle = '#666';
+    ctx.fillText(TEE_NAMES[li], lx + 7, H - 13);
+    lx += ctx.measureText(TEE_NAMES[li]).width + 20;
+  }
+}
+
 </script>
 </body>
 </html>
